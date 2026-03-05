@@ -55,13 +55,13 @@ export function streamOutput(req: AuthRequest, res: Response): void {
     return;
   }
 
-  // Set SSE headers
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
+  // Set SSE headers individually and flush immediately
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.status(200);
+  res.flushHeaders();
 
   // Send initial connected event
   res.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);

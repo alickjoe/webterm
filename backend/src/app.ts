@@ -10,8 +10,14 @@ import { errorMiddleware } from './middleware/error.middleware';
 
 const app = express();
 
-// Security headers
-app.use(helmet());
+// Security headers (disable for SSE endpoints)
+app.use((req, res, next) => {
+  // Skip helmet for SSE stream endpoints to avoid header conflicts
+  if (req.path.match(/\/api\/terminal\/sessions\/.+\/stream/)) {
+    return next();
+  }
+  helmet()(req, res, next);
+});
 
 // CORS
 app.use(
