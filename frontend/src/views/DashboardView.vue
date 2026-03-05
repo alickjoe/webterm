@@ -135,11 +135,11 @@ onMounted(() => {
 });
 
 function openTerminal(connectionId: string) {
-  router.push({ name: 'terminal', params: { connectionId } });
+  router.push({ name: 'workspace', params: { connectionId }, query: { tab: 'terminal' } });
 }
 
 function openSftp(connectionId: string) {
-  router.push({ name: 'sftp', params: { connectionId } });
+  router.push({ name: 'workspace', params: { connectionId }, query: { tab: 'sftp' } });
 }
 
 function editConn(conn: Connection) {
