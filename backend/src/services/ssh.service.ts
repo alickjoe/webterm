@@ -78,15 +78,24 @@ export async function createSession(
           session.lastActivityAt = new Date();
           const base64Data = data.toString('base64');
           for (const res of session.sseClients) {
-            res.write(`event: output\ndata: ${JSON.stringify({ output: base64Data })}\n\n`);
+            try {
+              res.write(`event: output\ndata: ${JSON.stringify({ output: base64Data })}\n\n`);
+            } catch (e) {
+              logger.error({ sessionId, err: e }, 'Error writing to SSE client');
+              session.sseClients.delete(res);
+            }
           }
         });
 
         stream.on('close', () => {
           logger.info({ sessionId }, 'SSH stream closed');
+          // Only cleanup if session still exists (avoid double-cleanup)
+          if (!sessions.has(sessionId)) return;
           for (const res of session.sseClients) {
-            res.write(`event: close\ndata: ${JSON.stringify({ reason: 'stream_closed' })}\n\n`);
-            res.end();
+            try {
+              res.write(`event: close\ndata: ${JSON.stringify({ reason: 'stream_closed' })}\n\n`);
+              res.end();
+            } catch {}
           }
           sessions.delete(sessionId);
           client.end();
@@ -95,7 +104,9 @@ export async function createSession(
         stream.stderr.on('data', (data: Buffer) => {
           const base64Data = data.toString('base64');
           for (const res of session.sseClients) {
-            res.write(`event: output\ndata: ${JSON.stringify({ output: base64Data })}\n\n`);
+            try {
+              res.write(`event: output\ndata: ${JSON.stringify({ output: base64Data })}\n\n`);
+            } catch {}
           }
         });
 
@@ -110,14 +121,31 @@ export async function createSession(
       const session = sessions.get(sessionId);
       if (session) {
         for (const res of session.sseClients) {
-          res.write(
-            `event: error\ndata: ${JSON.stringify({ code: 'SSH_ERROR', message: err.message })}\n\n`
-          );
-          res.end();
+          try {
+            res.write(
+              `event: error\ndata: ${JSON.stringify({ code: 'SSH_ERROR', message: err.message })}\n\n`
+            );
+            res.end();
+          } catch {}
         }
         sessions.delete(sessionId);
       }
+      // Only reject if promise hasn't resolved yet
       reject(err);
+    });
+
+    client.on('close', () => {
+      logger.info({ sessionId }, 'SSH client connection closed');
+      const session = sessions.get(sessionId);
+      if (session) {
+        for (const res of session.sseClients) {
+          try {
+            res.write(`event: close\ndata: ${JSON.stringify({ reason: 'ssh_disconnected' })}\n\n`);
+            res.end();
+          } catch {}
+        }
+        sessions.delete(sessionId);
+      }
     });
 
     const connectConfig: any = {

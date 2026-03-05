@@ -46,6 +46,7 @@ export function streamOutput(req: AuthRequest, res: Response): void {
   const sessionId = req.params.sessionId as string;
   const session = sshService.getSession(sessionId);
   if (!session) {
+    logger.error({ sessionId }, 'SSE stream: session not found');
     res.status(404).json({ error: 'Session not found' });
     return;
   }
@@ -55,19 +56,28 @@ export function streamOutput(req: AuthRequest, res: Response): void {
     return;
   }
 
-  // Set SSE headers individually and flush immediately
+  // Set SSE headers - prevent any proxy from buffering/compressing
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Content-Encoding', 'none');
   res.status(200);
   res.flushHeaders();
+
+  // Send padding comment (~2KB) to force proxy buffers to flush.
+  // Many reverse proxies (Cloudflare, Nginx, etc.) buffer the first
+  // chunk of a response. Sending enough data forces them to deliver
+  // the headers + initial data to the client immediately.
+  const padding = ':' + ' '.repeat(2048) + '\n\n';
+  res.write(padding);
 
   // Send initial connected event
   res.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);
 
   // Register this response as an SSE client
   sshService.addSSEClient(sessionId, res);
+  logger.info({ sessionId }, 'SSE client connected');
 }
 
 export function sendInput(req: AuthRequest, res: Response): void {
