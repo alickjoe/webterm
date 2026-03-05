@@ -17,7 +17,7 @@ services:
     volumes:
       - frontend-dist:/output
     # Copy built files to shared volume then exit
-    entrypoint: ["/bin/sh", "-c", "cp -r /usr/share/nginx/html/* /output/ && echo 'Frontend files copied'"]
+    entrypoint: ["/bin/sh", "-c", "rm -rf /output/* && cp -r /usr/share/nginx/html/* /output/ && echo 'Frontend files copied'"]
 
   backend:
     build: ./backend
