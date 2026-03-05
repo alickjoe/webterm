@@ -1,0 +1,48 @@
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    volumes:
+      - frontend-dist:/usr/share/nginx/html:ro
+    depends_on:
+      frontend:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - frontend-dist:/output
+    # Copy built files to shared volume then exit
+    entrypoint: ["/bin/sh", "-c", "cp -r /usr/share/nginx/html/* /output/ && echo 'Frontend files copied'"]
+
+  backend:
+    build: ./backend
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MASTER_SECRET=${MASTER_SECRET:-change-this-to-a-secure-random-string-at-least-32-chars}
+      - JWT_SECRET=${JWT_SECRET:-change-this-jwt-secret-in-production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+      - ROCKSDB_PATH=/app/data/rocksdb
+      - MAX_SESSIONS_PER_USER=${MAX_SESSIONS_PER_USER:-5}
+      - SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES:-30}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - webterm-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  webterm-data:
+    driver: local
+  frontend-dist:
+    driver: local
