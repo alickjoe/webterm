@@ -17,15 +17,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/terminal/:connectionId',
-      name: 'terminal',
-      component: () => import('@/views/TerminalView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/sftp/:connectionId',
-      name: 'sftp',
-      component: () => import('@/views/SftpView.vue'),
+      path: '/workspace/:connectionId',
+      name: 'workspace',
+      component: () => import('@/views/WorkspaceView.vue'),
       meta: { requiresAuth: true },
     },
   ],

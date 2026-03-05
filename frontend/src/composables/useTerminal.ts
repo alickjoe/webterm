@@ -151,6 +151,15 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
     connected.value = false;
   }
 
+  function fit() {
+    if (fitAddon && terminal) {
+      fitAddon.fit();
+      if (sessionId.value) {
+        resizeTerminal(sessionId.value, terminal.cols, terminal.rows).catch(() => {});
+      }
+    }
+  }
+
   function dispose() {
     disconnect();
     if (terminal) {
@@ -162,5 +171,5 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
 
   onUnmounted(dispose);
 
-  return { sessionId, connected, error, initTerminal, connect, disconnect, dispose };
+  return { sessionId, connected, error, initTerminal, connect, disconnect, dispose, fit };
 }
