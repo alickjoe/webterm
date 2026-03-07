@@ -9,6 +9,8 @@ import {
   makeDirectory,
   renameFile,
   statFile,
+  readFileContent,
+  writeFileContent,
   closeSession,
 } from '../controllers/sftp.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
@@ -26,6 +28,8 @@ router.delete('/sessions/:sessionId/file', deleteFile);
 router.post('/sessions/:sessionId/mkdir', makeDirectory);
 router.post('/sessions/:sessionId/rename', renameFile);
 router.get('/sessions/:sessionId/stat', statFile);
+router.get('/sessions/:sessionId/file/content', readFileContent);
+router.put('/sessions/:sessionId/file/content', writeFileContent);
 router.delete('/sessions/:sessionId', closeSession);
 
 export default router;

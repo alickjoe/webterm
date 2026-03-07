@@ -37,6 +37,7 @@
           </button>
           <button class="btn-primary btn-sm" @click="triggerUpload">Upload</button>
           <button class="btn-secondary btn-sm" @click="showMkdir = true">New Folder</button>
+          <button class="btn-secondary btn-sm" @click="openNewFile">New File</button>
           <input ref="fileInput" type="file" class="hidden" @change="handleUpload" multiple />
         </template>
       </div>
@@ -75,7 +76,7 @@
               v-for="file in sftp.files.value"
               :key="file.path"
               :class="['file-row', file.type]"
-              @dblclick="sftp.navigateTo(file)"
+              @dblclick="handleDblClick(file)"
             >
               <td class="col-name">
                 <span class="file-icon">{{ fileIcon(file.type) }}</span>
@@ -88,6 +89,9 @@
               <td class="col-date">{{ formatDate(file.modifiedAt) }}</td>
               <td class="col-actions">
                 <div class="flex gap-2">
+                  <button v-if="file.type === 'file'" class="btn-icon" title="Edit" @click="openEditor(file)" :disabled="file.size > MAX_EDIT_SIZE">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </button>
                   <button v-if="file.type === 'file'" class="btn-icon" title="Download" @click="sftp.download(file.path)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   </button>
@@ -132,6 +136,16 @@
         </div>
       </div>
     </div>
+
+    <!-- File Editor Modal -->
+    <FileEditorModal
+      v-if="showEditor && sftp.sessionId.value"
+      :session-id="sftp.sessionId.value"
+      :file="editingFile"
+      :current-path="sftp.currentPath.value"
+      @close="onEditorClose"
+      @saved="onEditorSaved"
+    />
   </div>
 </template>
 
@@ -140,8 +154,11 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTerminal } from '@/composables/useTerminal';
 import { useSftp } from '@/composables/useSftp';
+import { defineAsyncComponent } from 'vue';
 import type { FileEntry } from '@/types';
 import '@xterm/xterm/css/xterm.css';
+
+const FileEditorModal = defineAsyncComponent(() => import('@/views/FileEditorModal.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -170,6 +187,11 @@ const newFolderName = ref('');
 const showRename = ref(false);
 const renameTarget = ref<FileEntry | null>(null);
 const renameNewName = ref('');
+
+// File Editor
+const showEditor = ref(false);
+const editingFile = ref<FileEntry | null>(null);
+const MAX_EDIT_SIZE = 1 * 1024 * 1024; // 1MB
 
 // Re-fit terminal when switching back to terminal tab
 watch(activeTab, (tab) => {
@@ -263,6 +285,34 @@ async function doRename() {
   await sftp.rename(renameTarget.value.path, newPath);
   showRename.value = false;
   renameTarget.value = null;
+}
+
+// File Editor handlers
+function handleDblClick(file: FileEntry) {
+  if (file.type === 'directory') {
+    sftp.navigateTo(file);
+  } else if (file.type === 'file' && file.size <= MAX_EDIT_SIZE) {
+    openEditor(file);
+  }
+}
+
+function openEditor(file: FileEntry) {
+  editingFile.value = file;
+  showEditor.value = true;
+}
+
+function openNewFile() {
+  editingFile.value = null;
+  showEditor.value = true;
+}
+
+function onEditorClose() {
+  showEditor.value = false;
+  editingFile.value = null;
+}
+
+function onEditorSaved() {
+  sftp.listDir(sftp.currentPath.value);
 }
 </script>
 
@@ -462,7 +512,7 @@ td {
 }
 
 .col-actions {
-  width: 120px;
+  width: 150px;
 }
 
 .file-icon {

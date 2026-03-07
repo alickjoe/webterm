@@ -215,6 +215,57 @@ export async function stat(sessionId: string, filePath: string): Promise<FileEnt
   });
 }
 
+export async function readFileContent(sessionId: string, filePath: string): Promise<string> {
+  const session = sftpSessions.get(sessionId);
+  if (!session) throw new Error('Session not found');
+  session.lastActivityAt = new Date();
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const stream = session.sftp.createReadStream(filePath);
+
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    stream.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      // Check for binary content (null bytes)
+      if (buffer.includes(0x00)) {
+        return reject(new Error('Binary file cannot be edited'));
+      }
+      resolve(buffer.toString('utf-8'));
+    });
+
+    stream.on('error', (err: Error) => {
+      reject(err);
+    });
+  });
+}
+
+export async function writeFileContent(sessionId: string, filePath: string, content: string): Promise<void> {
+  const session = sftpSessions.get(sessionId);
+  if (!session) throw new Error('Session not found');
+  session.lastActivityAt = new Date();
+
+  return new Promise((resolve, reject) => {
+    const writeStream = session.sftp.createWriteStream(filePath);
+    const buffer = Buffer.from(content, 'utf-8');
+    const { Readable } = require('stream');
+    const readStream = Readable.from(buffer);
+
+    readStream.pipe(writeStream);
+
+    writeStream.on('close', () => {
+      resolve();
+    });
+
+    writeStream.on('error', (err: Error) => {
+      reject(err);
+    });
+  });
+}
+
 export function closeSftpSession(sessionId: string): void {
   const session = sftpSessions.get(sessionId);
   if (!session) return;
