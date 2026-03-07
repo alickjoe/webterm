@@ -47,3 +47,19 @@ export async function renameFile(sessionId: string, oldPath: string, newPath: st
 export async function closeSftpSession(sessionId: string) {
   await client.delete(`/sftp/sessions/${sessionId}`);
 }
+
+export async function readFileContent(sessionId: string, filePath: string) {
+  const { data } = await client.get<{ content: string; path: string; size: number }>(
+    `/sftp/sessions/${sessionId}/file/content`,
+    { params: { path: filePath } }
+  );
+  return data;
+}
+
+export async function writeFileContent(sessionId: string, filePath: string, content: string) {
+  const { data } = await client.put<{ success: boolean; path: string; size: number }>(
+    `/sftp/sessions/${sessionId}/file/content`,
+    { path: filePath, content }
+  );
+  return data;
+}
