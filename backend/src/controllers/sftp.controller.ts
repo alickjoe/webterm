@@ -21,6 +21,13 @@ const renameSchema = z.object({
   newPath: z.string().min(1),
 });
 
+const writeContentSchema = z.object({
+  path: z.string().min(1),
+  content: z.string().max(1048576),
+});
+
+const MAX_EDIT_SIZE = 1 * 1024 * 1024; // 1MB
+
 function validateSessionAccess(req: AuthRequest, res: Response): string | null {
   const sessionId = req.params.sessionId as string;
   const session = sftpService.getSftpSession(sessionId);
@@ -218,6 +225,64 @@ export async function statFile(req: AuthRequest, res: Response): Promise<void> {
   } catch (err) {
     logger.error({ err }, 'Stat file error');
     res.status(500).json({ error: 'Failed to get file info' });
+  }
+}
+
+export async function readFileContent(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const sessionId = validateSessionAccess(req, res);
+    if (!sessionId) return;
+
+    const filePath = req.query.path as string;
+    if (!filePath) {
+      res.status(400).json({ error: 'Path is required' });
+      return;
+    }
+
+    // Check file size first
+    const info = await sftpService.stat(sessionId, filePath);
+    if (info.type === 'directory') {
+      res.status(400).json({ error: 'Cannot edit a directory' });
+      return;
+    }
+    if (info.size > MAX_EDIT_SIZE) {
+      res.status(413).json({
+        error: 'File too large for editing',
+        size: info.size,
+        limit: MAX_EDIT_SIZE,
+      });
+      return;
+    }
+
+    const content = await sftpService.readFileContent(sessionId, filePath);
+    res.json({ content, path: filePath, size: info.size });
+  } catch (err: any) {
+    logger.error({ err }, 'Read file content error');
+    const message = err.message || 'Failed to read file content';
+    if (message === 'Binary file cannot be edited') {
+      res.status(422).json({ error: message });
+      return;
+    }
+    res.status(500).json({ error: message });
+  }
+}
+
+export async function writeFileContent(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const sessionId = validateSessionAccess(req, res);
+    if (!sessionId) return;
+
+    const { path: filePath, content } = writeContentSchema.parse(req.body);
+    await sftpService.writeFileContent(sessionId, filePath, content);
+    const size = Buffer.byteLength(content, 'utf-8');
+    res.json({ success: true, path: filePath, size });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation error', details: err.errors });
+      return;
+    }
+    logger.error({ err }, 'Write file content error');
+    res.status(500).json({ error: err.message || 'Failed to write file content' });
   }
 }
 
