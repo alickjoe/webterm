@@ -107,11 +107,13 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConnectionsStore } from '@/stores/connections.store';
+import { useWorkspaceStore } from '@/stores/workspace.store';
 import type { Connection, ConnectionInput } from '@/types';
 
 const router = useRouter();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
+const workspaceStore = useWorkspaceStore();
 
 const showForm = ref(false);
 const editingId = ref<string | null>(null);
@@ -135,11 +137,15 @@ onMounted(() => {
 });
 
 function openTerminal(connectionId: string) {
-  router.push({ name: 'workspace', params: { connectionId }, query: { tab: 'terminal' } });
+  const conn = connections.connections.find(c => c.id === connectionId);
+  if (conn) workspaceStore.addTab(conn, 'terminal');
+  router.push({ name: 'workspace' });
 }
 
 function openSftp(connectionId: string) {
-  router.push({ name: 'workspace', params: { connectionId }, query: { tab: 'sftp' } });
+  const conn = connections.connections.find(c => c.id === connectionId);
+  if (conn) workspaceStore.addTab(conn, 'sftp');
+  router.push({ name: 'workspace' });
 }
 
 function editConn(conn: Connection) {
