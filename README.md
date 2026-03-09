@@ -8,13 +8,18 @@ A browser-based Web SSH terminal with real-time terminal interaction, SFTP file 
 
 ## 功能特性 / Features
 
-### SSH 终端 / SSH Terminal
-- 基于 XTerm.js 的全功能终端仿真 / Full-featured terminal emulation powered by XTerm.js
-- Server-Sent Events (SSE) 实时数据流推送 / Real-time data streaming via Server-Sent Events (SSE)
-- 终端窗口自适应大小调整 / Auto-resizing terminal window
-- 可点击链接识别 / Clickable link detection
-- Tokyo Night 深色主题，JetBrains Mono / Fira Code 字体 / Tokyo Night dark theme with JetBrains Mono / Fira Code fonts
-- 输入缓冲批量发送优化（30ms） / Buffered input batching optimization (30ms)
+### 多主机连接
+- 同时连接多个 SSH 主机
+- 浏览器标签页风格的多主机切换
+- 切换主机时不中断现有会话
+- 每个主机独立的终端和 SFTP 工作区
+- 从仪表板添加新连接，即时切换到工作区
+
+### SFTP 文件管理
+- 远程目录浏览与导航
+- 文件上传（最大 100MB）与下载
+- 文件/目录的创建、删除、重命名
+- 文件权限、大小、修改时间显示
 
 ### SSH 连接管理 / SSH Connection Management
 - 保存多个 SSH 连接配置 / Save multiple SSH connection profiles
@@ -95,21 +100,22 @@ webterm/
 │       └── types/              # TypeScript 类型定义 / Type definitions
 ├── frontend/                   # 前端应用 / Frontend app
 │   └── src/
-│       ├── views/              # 页面组件 / Page components
-│       │   ├── LoginView.vue        # 登录/注册 / Login/Register
-│       │   ├── DashboardView.vue    # 连接管理仪表板 / Connection dashboard
-│       │   ├── WorkspaceView.vue    # 终端 + SFTP 工作区 / Terminal + SFTP workspace
-│       │   └── FileEditorModal.vue  # 文件编辑器 / File editor
-│       ├── composables/        # 组合式函数 / Composables
-│       │   ├── useTerminal.ts       # 终端逻辑 / Terminal logic
-│       │   ├── useSftp.ts           # SFTP 操作 / SFTP operations
-│       │   ├── useFileEditor.ts     # 文件编辑器逻辑 / File editor logic
-│       │   └── useSSE.ts           # SSE 连接管理 / SSE connection
-│       ├── api/                # API 调用层 / API client layer
-│       ├── stores/             # Pinia 状态管理 / Pinia stores
-│       ├── utils/              # 编辑器语言映射与主题 / Editor languages & theme
-│       └── router/             # 路由配置 / Router config
-├── nginx/                      # Nginx 反向代理配置 / Nginx reverse proxy config
+│       ├── views/              # 页面组件
+│       │   ├── LoginView.vue        # 登录/注册
+│       │   ├── DashboardView.vue    # 连接管理仪表板
+│       │   ├── WorkspaceView.vue    # 多主机工作区（标签管理）
+│       │   ├── ConnectionPanel.vue  # 单主机连接面板
+│       │   └── FileEditorModal.vue  # 文件编辑器
+│       ├── composables/        # 组合式函数
+│       │   ├── useTerminal.ts       # 终端逻辑
+│       │   ├── useSftp.ts           # SFTP 操作
+│       │   ├── useFileEditor.ts     # 文件编辑器逻辑
+│       │   └── useSSE.ts           # SSE 连接管理
+│       ├── api/                # API 调用层
+│       ├── stores/             # Pinia 状态管理
+│       ├── utils/              # 编辑器语言映射与主题
+│       └── router/             # 路由配置
+├── nginx/                      # Nginx 反向代理配置
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -180,8 +186,9 @@ Frontend dev server runs at `http://localhost:5173`, backend API at `http://loca
 ```
 Browser (浏览器)
   │
-  ├── Vue 3 SPA ──── XTerm.js (终端 / Terminal)
-  │                   CodeMirror 6 (编辑器 / Editor)
+  ├── Vue 3 SPA ──── XTerm.js (终端) x N
+  │                   CodeMirror 6 (编辑器)
+  │                   多主机 Tab 管理 (Pinia)
   │
   ▼
 Nginx (反向代理 / Reverse Proxy, :80)

@@ -1,318 +1,63 @@
 <template>
   <div class="workspace">
     <header class="workspace-header">
-      <div class="flex items-center gap-3">
-        <button class="btn-secondary btn-sm" @click="goBack">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Back
-        </button>
-        <div class="tab-bar">
-          <button
-            :class="['tab', { active: activeTab === 'terminal' }]"
-            @click="switchTab('terminal')"
-          >
-            Terminal
-            <span v-if="termConnected" class="tab-dot connected"></span>
-            <span v-else class="tab-dot disconnected"></span>
-          </button>
-          <button
-            :class="['tab', { active: activeTab === 'sftp' }]"
-            @click="switchTab('sftp')"
-          >
-            SFTP
-          </button>
-        </div>
-      </div>
       <div class="flex items-center gap-2">
-        <!-- Terminal actions -->
-        <template v-if="activeTab === 'terminal'">
-          <button v-if="!termConnected" class="btn-primary btn-sm" @click="handleTermConnect">Reconnect</button>
-          <button v-else class="btn-danger btn-sm" @click="handleTermDisconnect">Disconnect</button>
-        </template>
-        <!-- SFTP actions -->
-        <template v-else>
-          <button class="btn-secondary btn-sm" @click="sftp.goUp()" :disabled="sftp.currentPath.value === '/'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-            Up
-          </button>
-          <button class="btn-primary btn-sm" @click="triggerUpload">Upload</button>
-          <button class="btn-secondary btn-sm" @click="showMkdir = true">New Folder</button>
-          <button class="btn-secondary btn-sm" @click="openNewFile">New File</button>
-          <input ref="fileInput" type="file" class="hidden" @change="handleUpload" multiple />
-        </template>
+        <button class="btn-secondary btn-sm" @click="goToDashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Dashboard
+        </button>
+        <div class="host-tabs">
+          <div
+            v-for="tab in workspaceStore.tabs"
+            :key="tab.id"
+            :class="['host-tab', { active: tab.id === workspaceStore.activeTabId }]"
+            @click="workspaceStore.setActiveTab(tab.id)"
+          >
+            <span class="host-tab-label">{{ tab.label }}</span>
+            <span class="host-tab-host">{{ tab.host }}</span>
+            <button class="host-tab-close" @click.stop="closeTab(tab.id)" title="Close">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn-add-tab" @click="goToDashboard" title="Add connection">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
       </div>
     </header>
 
-    <!-- Terminal Panel -->
-    <div v-show="activeTab === 'terminal'" class="panel terminal-panel">
-      <div class="terminal-container" ref="terminalContainer"></div>
-      <div v-if="termError" class="terminal-error">{{ termError }}</div>
-    </div>
-
-    <!-- SFTP Panel -->
-    <div v-show="activeTab === 'sftp'" class="panel sftp-panel">
-      <div class="path-bar">
-        <span class="path-label">Path:</span>
-        <span class="path-value">{{ sftp.currentPath.value }}</span>
-      </div>
-
-      <div v-if="sftp.error.value" class="sftp-error">{{ sftp.error.value }}</div>
-
-      <div v-if="sftp.loading.value && sftp.files.value.length === 0" class="loading">Loading...</div>
-
-      <div v-else class="file-list">
-        <table>
-          <thead>
-            <tr>
-              <th class="col-name">Name</th>
-              <th class="col-size">Size</th>
-              <th class="col-perms">Permissions</th>
-              <th class="col-date">Modified</th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="file in sftp.files.value"
-              :key="file.path"
-              :class="['file-row', file.type]"
-              @dblclick="handleDblClick(file)"
-            >
-              <td class="col-name">
-                <span class="file-icon">{{ fileIcon(file.type) }}</span>
-                <span class="file-name" :class="{ clickable: file.type === 'directory' }">
-                  {{ file.name }}
-                </span>
-              </td>
-              <td class="col-size">{{ file.type === 'directory' ? '-' : formatSize(file.size) }}</td>
-              <td class="col-perms"><code>{{ file.permissions }}</code></td>
-              <td class="col-date">{{ formatDate(file.modifiedAt) }}</td>
-              <td class="col-actions">
-                <div class="flex gap-2">
-                  <button v-if="file.type === 'file'" class="btn-icon" title="Edit" @click="openEditor(file)" :disabled="file.size > MAX_EDIT_SIZE">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  </button>
-                  <button v-if="file.type === 'file'" class="btn-icon" title="Download" @click="sftp.download(file.path)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  </button>
-                  <button class="btn-icon" title="Rename" @click="startRename(file)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button class="btn-icon danger" title="Delete" @click="confirmDelete(file)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Mkdir Dialog -->
-      <div v-if="showMkdir" class="modal-overlay" @click.self="showMkdir = false">
-        <div class="modal card" style="width: 360px">
-          <h3>New Folder</h3>
-          <form @submit.prevent="createFolder" class="form">
-            <input v-model="newFolderName" type="text" placeholder="Folder name" required autofocus />
-            <div class="flex gap-2 justify-end">
-              <button type="button" class="btn-secondary" @click="showMkdir = false">Cancel</button>
-              <button type="submit" class="btn-primary">Create</button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Rename Dialog -->
-      <div v-if="showRename" class="modal-overlay" @click.self="showRename = false">
-        <div class="modal card" style="width: 360px">
-          <h3>Rename</h3>
-          <form @submit.prevent="doRename" class="form">
-            <input v-model="renameNewName" type="text" placeholder="New name" required autofocus />
-            <div class="flex gap-2 justify-end">
-              <button type="button" class="btn-secondary" @click="showRename = false">Cancel</button>
-              <button type="submit" class="btn-primary">Rename</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- File Editor Modal -->
-    <FileEditorModal
-      v-if="showEditor && sftp.sessionId.value"
-      :session-id="sftp.sessionId.value"
-      :file="editingFile"
-      :current-path="sftp.currentPath.value"
-      @close="onEditorClose"
-      @saved="onEditorSaved"
+    <ConnectionPanel
+      v-for="tab in workspaceStore.tabs"
+      :key="tab.id"
+      v-show="tab.id === workspaceStore.activeTabId"
+      :connection-id="tab.connectionId"
+      :is-active="tab.id === workspaceStore.activeTabId"
+      :active-sub-tab="tab.activeSubTab"
+      @sub-tab-change="(st) => workspaceStore.setSubTab(tab.id, st)"
+      @close="closeTab(tab.id)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useTerminal } from '@/composables/useTerminal';
-import { useSftp } from '@/composables/useSftp';
-import { defineAsyncComponent } from 'vue';
-import type { FileEntry } from '@/types';
-import '@xterm/xterm/css/xterm.css';
+defineOptions({ name: 'WorkspaceView' });
 
-const FileEditorModal = defineAsyncComponent(() => import('@/views/FileEditorModal.vue'));
+import { useRouter } from 'vue-router';
+import { useWorkspaceStore } from '@/stores/workspace.store';
+import ConnectionPanel from '@/views/ConnectionPanel.vue';
 
-const route = useRoute();
 const router = useRouter();
-const connectionId = route.params.connectionId as string;
+const workspaceStore = useWorkspaceStore();
 
-// Tab state
-const initialTab = route.query.tab === 'sftp' ? 'sftp' : 'terminal';
-const activeTab = ref<'terminal' | 'sftp'>(initialTab);
+function goToDashboard() {
+  router.push({ name: 'dashboard' });
+}
 
-// Terminal
-const terminalContainer = ref<HTMLElement | null>(null);
-const {
-  connected: termConnected,
-  error: termError,
-  initTerminal,
-  connect: termConnect,
-  disconnect: termDisconnect,
-  fit,
-} = useTerminal(terminalContainer);
-
-// SFTP
-const sftp = useSftp();
-const fileInput = ref<HTMLInputElement | null>(null);
-const showMkdir = ref(false);
-const newFolderName = ref('');
-const showRename = ref(false);
-const renameTarget = ref<FileEntry | null>(null);
-const renameNewName = ref('');
-
-// File Editor
-const showEditor = ref(false);
-const editingFile = ref<FileEntry | null>(null);
-const MAX_EDIT_SIZE = 1 * 1024 * 1024; // 1MB
-
-// Re-fit terminal when switching back to terminal tab
-watch(activeTab, (tab) => {
-  if (tab === 'terminal') {
-    nextTick(() => fit());
+function closeTab(tabId: string) {
+  const allClosed = workspaceStore.removeTab(tabId);
+  if (allClosed) {
+    router.push({ name: 'dashboard' });
   }
-});
-
-onMounted(() => {
-  initTerminal();
-  termConnect(connectionId);
-  sftp.connect(connectionId);
-});
-
-onUnmounted(() => {
-  sftp.disconnect();
-});
-
-function switchTab(tab: 'terminal' | 'sftp') {
-  activeTab.value = tab;
-}
-
-function goBack() {
-  router.push('/');
-}
-
-// Terminal handlers
-async function handleTermConnect() {
-  await termConnect(connectionId);
-}
-
-async function handleTermDisconnect() {
-  await termDisconnect();
-}
-
-// SFTP handlers
-function fileIcon(type: string) {
-  if (type === 'directory') return '\uD83D\uDCC1';
-  if (type === 'symlink') return '\uD83D\uDD17';
-  return '\uD83D\uDCC4';
-}
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function triggerUpload() {
-  fileInput.value?.click();
-}
-
-async function handleUpload(e: Event) {
-  const input = e.target as HTMLInputElement;
-  if (!input.files) return;
-  for (const file of input.files) {
-    await sftp.upload(file);
-  }
-  input.value = '';
-}
-
-function confirmDelete(file: FileEntry) {
-  if (confirm(`Delete "${file.name}"?`)) {
-    sftp.remove(file.path);
-  }
-}
-
-async function createFolder() {
-  if (!newFolderName.value) return;
-  await sftp.mkdir(newFolderName.value);
-  newFolderName.value = '';
-  showMkdir.value = false;
-}
-
-function startRename(file: FileEntry) {
-  renameTarget.value = file;
-  renameNewName.value = file.name;
-  showRename.value = true;
-}
-
-async function doRename() {
-  if (!renameTarget.value || !renameNewName.value) return;
-  const parentPath = renameTarget.value.path.split('/').slice(0, -1).join('/') || '/';
-  const newPath = parentPath === '/' ? `/${renameNewName.value}` : `${parentPath}/${renameNewName.value}`;
-  await sftp.rename(renameTarget.value.path, newPath);
-  showRename.value = false;
-  renameTarget.value = null;
-}
-
-// File Editor handlers
-function handleDblClick(file: FileEntry) {
-  if (file.type === 'directory') {
-    sftp.navigateTo(file);
-  } else if (file.type === 'file' && file.size <= MAX_EDIT_SIZE) {
-    openEditor(file);
-  }
-}
-
-function openEditor(file: FileEntry) {
-  editingFile.value = file;
-  showEditor.value = true;
-}
-
-function openNewFile() {
-  editingFile.value = null;
-  showEditor.value = true;
-}
-
-function onEditorClose() {
-  showEditor.value = false;
-  editingFile.value = null;
-}
-
-function onEditorSaved() {
-  sftp.listDir(sftp.currentPath.value);
 }
 </script>
 
@@ -327,220 +72,111 @@ function onEditorSaved() {
 .workspace-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
+  padding: 0 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  gap: 12px;
+  min-height: 42px;
 }
 
-/* Tab bar */
-.tab-bar {
+.host-tabs {
   display: flex;
   gap: 0;
-  margin-left: 8px;
+  overflow-x: auto;
+  margin-left: 4px;
 }
 
-.tab {
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+.host-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+  max-width: 240px;
+  min-width: 120px;
+  position: relative;
 }
 
-.tab:hover {
+.host-tab:hover {
   color: var(--text-secondary);
+  background: rgba(122, 162, 247, 0.05);
 }
 
-.tab.active {
-  color: var(--accent);
+.host-tab.active {
+  color: var(--text-primary);
   border-bottom-color: var(--accent);
 }
 
-.tab-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
+.host-tab + .host-tab {
+  border-left: 1px solid var(--border);
 }
 
-.tab-dot.connected {
-  background: var(--success);
-}
-
-.tab-dot.disconnected {
-  background: var(--danger);
-}
-
-/* Panels */
-.panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.host-tab-label {
+  font-weight: 500;
   overflow: hidden;
-  min-height: 0;
+  text-overflow: ellipsis;
 }
 
-/* Terminal panel */
-.terminal-panel {
-  background: #1a1b26;
-}
-
-.terminal-container {
-  flex: 1;
-  padding: 4px;
+.host-tab-host {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.terminal-container :deep(.xterm) {
-  height: 100%;
+.host-tab.active .host-tab-host {
+  color: var(--text-secondary);
 }
 
-.terminal-error {
-  padding: 8px 16px;
-  background: rgba(247, 118, 142, 0.1);
-  color: var(--danger);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-/* SFTP panel */
-.sftp-panel {
-  background: var(--bg-primary);
-}
-
-.path-bar {
-  padding: 8px 16px;
-  background: var(--bg-tertiary);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.path-label {
-  color: var(--text-muted);
-  margin-right: 8px;
-}
-
-.path-value {
-  color: var(--accent);
-}
-
-.sftp-error {
-  padding: 8px 16px;
-  background: rgba(247, 118, 142, 0.1);
-  color: var(--danger);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.loading {
-  padding: 40px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.file-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: var(--bg-secondary);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-th {
-  text-align: left;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--border);
-}
-
-td {
-  padding: 6px 12px;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(59, 66, 97, 0.3);
-}
-
-.file-row {
-  transition: background 0.1s;
-}
-
-.file-row:hover {
-  background: var(--bg-secondary);
-}
-
-.file-row.directory {
-  cursor: pointer;
-}
-
-.col-name {
-  min-width: 300px;
-}
-
-.col-size {
-  width: 100px;
-  text-align: right;
-}
-
-.col-perms {
-  width: 120px;
-}
-
-.col-date {
-  width: 180px;
-}
-
-.col-actions {
-  width: 150px;
-}
-
-.file-icon {
-  margin-right: 8px;
-}
-
-.file-name.clickable {
-  color: var(--accent);
-}
-
-code {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.btn-icon {
+.host-tab-close {
   background: none;
-  padding: 4px;
+  border: none;
+  padding: 2px;
   color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  flex-shrink: 0;
 }
 
-.btn-icon:hover {
-  color: var(--text-primary);
+.host-tab:hover .host-tab-close,
+.host-tab.active .host-tab-close {
+  opacity: 1;
 }
 
-.btn-icon.danger:hover {
+.host-tab-close:hover {
   color: var(--danger);
+  background: rgba(247, 118, 142, 0.15);
+}
+
+.btn-add-tab {
+  background: none;
+  border: none;
+  padding: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.btn-add-tab:hover {
+  color: var(--accent);
+  background: rgba(122, 162, 247, 0.1);
 }
 
 .btn-sm {
@@ -549,34 +185,6 @@ code {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.hidden {
-  display: none;
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal h3 {
-  margin-bottom: 12px;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.justify-end {
-  justify-content: flex-end;
+  flex-shrink: 0;
 }
 </style>
