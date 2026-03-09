@@ -23,17 +23,44 @@
         <button class="btn-add-tab" @click="goToDashboard" title="Add connection">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         </button>
+        <div class="history-wrapper">
+          <button class="btn-add-tab" @click="toggleHistory" title="Command History">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <div v-if="showHistory" class="history-popup">
+            <div class="history-header">
+              <span class="history-title">Command History</span>
+              <button v-if="historyCommands.length > 0" class="btn-danger btn-sm" @click="handleClearHistory">Clear</button>
+            </div>
+            <div v-if="historyLoading" class="history-empty">Loading...</div>
+            <div v-else-if="historyCommands.length === 0" class="history-empty">No commands yet</div>
+            <div v-else class="history-list">
+              <div
+                v-for="(cmd, index) in historyCommands"
+                :key="index"
+                class="history-item"
+                @click="selectCommand(cmd)"
+                :title="cmd"
+              >
+                {{ cmd }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
+
+    <div v-if="showHistory" class="history-backdrop" @click="showHistory = false"></div>
 
     <ConnectionPanel
       v-for="tab in workspaceStore.tabs"
       :key="tab.id"
+      :ref="(el: any) => setPanelRef(tab.id, el)"
       v-show="tab.id === workspaceStore.activeTabId"
       :connection-id="tab.connectionId"
       :is-active="tab.id === workspaceStore.activeTabId"
       :active-sub-tab="tab.activeSubTab"
-      @sub-tab-change="(st) => workspaceStore.setSubTab(tab.id, st)"
+      @sub-tab-change="(st: 'terminal' | 'sftp') => workspaceStore.setSubTab(tab.id, st)"
       @close="closeTab(tab.id)"
     />
   </div>
@@ -42,18 +69,70 @@
 <script setup lang="ts">
 defineOptions({ name: 'WorkspaceView' });
 
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkspaceStore } from '@/stores/workspace.store';
+import { getCommandHistory, clearCommandHistory } from '@/api/history.api';
 import ConnectionPanel from '@/views/ConnectionPanel.vue';
 
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+
+// Panel template refs
+const panelRefs = ref<Record<string, InstanceType<typeof ConnectionPanel>>>({});
+
+function setPanelRef(tabId: string, el: any) {
+  if (el) {
+    panelRefs.value[tabId] = el;
+  } else {
+    delete panelRefs.value[tabId];
+  }
+}
+
+// History state
+const showHistory = ref(false);
+const historyCommands = ref<string[]>([]);
+const historyLoading = ref(false);
+
+async function toggleHistory() {
+  if (showHistory.value) {
+    showHistory.value = false;
+    return;
+  }
+  showHistory.value = true;
+  historyLoading.value = true;
+  try {
+    historyCommands.value = await getCommandHistory();
+  } catch {
+    historyCommands.value = [];
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function selectCommand(cmd: string) {
+  showHistory.value = false;
+  const activeId = workspaceStore.activeTabId;
+  if (activeId && panelRefs.value[activeId]) {
+    panelRefs.value[activeId].writeCommand(cmd);
+  }
+}
+
+async function handleClearHistory() {
+  try {
+    await clearCommandHistory();
+    historyCommands.value = [];
+  } catch {
+    // ignore
+  }
+}
 
 function goToDashboard() {
   router.push({ name: 'dashboard' });
 }
 
 function closeTab(tabId: string) {
+  delete panelRefs.value[tabId];
   const allClosed = workspaceStore.removeTab(tabId);
   if (allClosed) {
     router.push({ name: 'dashboard' });
@@ -186,5 +265,83 @@ function closeTab(tabId: string) {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+}
+
+/* History dropdown */
+.history-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.history-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.history-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  width: 420px;
+  max-height: 400px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.history-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.history-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.history-item {
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid rgba(59, 66, 97, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item:hover {
+  background: rgba(122, 162, 247, 0.1);
+  color: var(--text-primary);
+}
+
+.history-empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 </style>
