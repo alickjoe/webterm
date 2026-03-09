@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { User } from '@/types';
 import * as authApi from '@/api/auth.api';
+import { useWorkspaceStore } from '@/stores/workspace.store';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -42,6 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    useWorkspaceStore().clearAll();
     user.value = null;
     token.value = null;
     localStorage.removeItem('token');

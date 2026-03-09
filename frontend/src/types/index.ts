@@ -45,3 +45,11 @@ export interface TerminalSessionInfo {
   createdAt: string;
   lastActivityAt: string;
 }
+
+export interface WorkspaceTab {
+  id: string;
+  connectionId: string;
+  label: string;
+  host: string;
+  activeSubTab: 'terminal' | 'sftp';
+}
