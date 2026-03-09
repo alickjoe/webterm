@@ -5,7 +5,11 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { useSSE } from './useSSE';
 import { sendInput, resizeTerminal, closeTerminalSession, createTerminalSession } from '@/api/terminal.api';
 
-export function useTerminal(containerRef: Ref<HTMLElement | null>) {
+export interface UseTerminalOptions {
+  onCommand?: (command: string) => void;
+}
+
+export function useTerminal(containerRef: Ref<HTMLElement | null>, options?: UseTerminalOptions) {
   const sessionId = ref<string | null>(null);
   const connected = ref(false);
   const error = ref<string | null>(null);
@@ -14,6 +18,10 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
   let sse: ReturnType<typeof useSSE> | null = null;
   let inputBuffer = '';
   let inputTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Command line tracking for history
+  let commandLineBuffer = '';
+  let inEscapeSeq = false;
 
   function initTerminal() {
     if (!containerRef.value) return;
@@ -56,6 +64,37 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
     // Handle user input - batch and send
     terminal.onData((data) => {
       if (!sessionId.value) return;
+
+      // Track command line for history
+      for (const ch of data) {
+        if (inEscapeSeq) {
+          // End of escape sequence on a letter or ~
+          if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch === '~') {
+            inEscapeSeq = false;
+          }
+          continue;
+        }
+        if (ch === '\x1b') {
+          inEscapeSeq = true;
+          continue;
+        }
+        if (ch === '\r') {
+          const cmd = commandLineBuffer.trim();
+          if (cmd) {
+            options?.onCommand?.(cmd);
+          }
+          commandLineBuffer = '';
+        } else if (ch === '\x7f' || ch === '\b') {
+          commandLineBuffer = commandLineBuffer.slice(0, -1);
+        } else if (ch === '\x03') {
+          commandLineBuffer = '';
+        } else if (ch === '\t') {
+          // Ignore tab (completion handled server-side)
+        } else if (ch >= ' ') {
+          commandLineBuffer += ch;
+        }
+      }
+
       inputBuffer += data;
       if (inputTimer) clearTimeout(inputTimer);
       inputTimer = setTimeout(flushInput, 30);
@@ -160,6 +199,11 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
     }
   }
 
+  function writeText(text: string) {
+    if (!sessionId.value || !text) return;
+    sendInput(sessionId.value, btoa(text)).catch(() => {});
+  }
+
   function dispose() {
     disconnect();
     if (terminal) {
@@ -171,5 +215,5 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>) {
 
   onUnmounted(dispose);
 
-  return { sessionId, connected, error, initTerminal, connect, disconnect, dispose, fit };
+  return { sessionId, connected, error, initTerminal, connect, disconnect, dispose, fit, writeText };
 }
