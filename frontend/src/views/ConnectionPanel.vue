@@ -149,6 +149,7 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useTerminal } from '@/composables/useTerminal';
 import { useSftp } from '@/composables/useSftp';
+import { saveCommand } from '@/api/history.api';
 import { defineAsyncComponent } from 'vue';
 import type { FileEntry } from '@/types';
 import '@xterm/xterm/css/xterm.css';
@@ -175,7 +176,14 @@ const {
   connect: termConnect,
   disconnect: termDisconnect,
   fit,
-} = useTerminal(terminalContainer);
+  writeText,
+} = useTerminal(terminalContainer, {
+  onCommand: (cmd) => { saveCommand(cmd).catch(() => {}); },
+});
+
+defineExpose({
+  writeCommand(text: string) { writeText(text); },
+});
 
 // SFTP
 const sftp = useSftp();
