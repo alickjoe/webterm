@@ -18,6 +18,13 @@
 - 连接可用性测试（10秒超时）
 - 凭证采用 AES-256-GCM 加密存储
 
+### 多主机连接
+- 同时连接多个 SSH 主机
+- 浏览器标签页风格的多主机切换
+- 切换主机时不中断现有会话
+- 每个主机独立的终端和 SFTP 工作区
+- 从仪表板添加新连接，即时切换到工作区
+
 ### SFTP 文件管理
 - 远程目录浏览与导航
 - 文件上传（最大 100MB）与下载
@@ -94,7 +101,8 @@ webterm/
 │       ├── views/              # 页面组件
 │       │   ├── LoginView.vue        # 登录/注册
 │       │   ├── DashboardView.vue    # 连接管理仪表板
-│       │   ├── WorkspaceView.vue    # 终端 + SFTP 工作区
+│       │   ├── WorkspaceView.vue    # 多主机工作区（标签管理）
+│       │   ├── ConnectionPanel.vue  # 单主机连接面板
 │       │   └── FileEditorModal.vue  # 文件编辑器
 │       ├── composables/        # 组合式函数
 │       │   ├── useTerminal.ts       # 终端逻辑
@@ -174,8 +182,9 @@ npm run dev
 ```
 浏览器
   │
-  ├── Vue 3 SPA ──── XTerm.js (终端)
+  ├── Vue 3 SPA ──── XTerm.js (终端) x N
   │                   CodeMirror 6 (编辑器)
+  │                   多主机 Tab 管理 (Pinia)
   │
   ▼
 Nginx (反向代理, :80)

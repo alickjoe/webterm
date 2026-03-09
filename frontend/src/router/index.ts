@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
+import { useWorkspaceStore } from '@/stores/workspace.store';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -17,7 +18,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/workspace/:connectionId',
+      path: '/workspace',
       name: 'workspace',
       component: () => import('@/views/WorkspaceView.vue'),
       meta: { requiresAuth: true },
@@ -31,6 +32,8 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     next({ name: 'login' });
   } else if (to.meta.guest && auth.isAuthenticated) {
+    next({ name: 'dashboard' });
+  } else if (to.name === 'workspace' && !useWorkspaceStore().hasOpenTabs) {
     next({ name: 'dashboard' });
   } else {
     next();
