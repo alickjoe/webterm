@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import connectionsRoutes from './routes/connections.routes';
 import terminalRoutes from './routes/terminal.routes';
 import sftpRoutes from './routes/sftp.routes';
+import historyRoutes from './routes/history.routes';
 import { errorMiddleware } from './middleware/error.middleware';
 
 const app = express();
@@ -41,6 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/connections', connectionsRoutes);
 app.use('/api/terminal', terminalRoutes);
 app.use('/api/sftp', sftpRoutes);
+app.use('/api/history', historyRoutes);
 
 // Error handling
 app.use(errorMiddleware);
