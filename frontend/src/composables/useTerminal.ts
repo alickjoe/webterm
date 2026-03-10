@@ -119,7 +119,8 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>, options?: Use
 
   async function flushInput() {
     if (!sessionId.value || !inputBuffer) return;
-    const data = btoa(inputBuffer);
+    // Use utf8ToBase64 to support Unicode characters (Chinese, emoji, etc.)
+    const data = utf8ToBase64(inputBuffer);
     inputBuffer = '';
     try {
       await sendInput(sessionId.value, data);
@@ -146,7 +147,8 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>, options?: Use
 
       sse.on('output', (data: { output: string }) => {
         if (terminal) {
-          const decoded = atob(data.output);
+          // Use base64ToUtf8 to support Unicode characters (Chinese, emoji, etc.)
+          const decoded = base64ToUtf8(data.output);
           terminal.write(decoded);
         }
       });
@@ -201,7 +203,22 @@ export function useTerminal(containerRef: Ref<HTMLElement | null>, options?: Use
 
   function writeText(text: string) {
     if (!sessionId.value || !text) return;
-    sendInput(sessionId.value, btoa(text)).catch(() => {});
+    // Use utf8ToBase64 to support Unicode characters
+    sendInput(sessionId.value, utf8ToBase64(text)).catch(() => {});
+  }
+
+  // Helper: Encode UTF-8 string to Base64 (supports Unicode)
+  function utf8ToBase64(str: string): string {
+    const bytes = new TextEncoder().encode(str);
+    const bin = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+    return btoa(bin);
+  }
+
+  // Helper: Decode Base64 to UTF-8 string (supports Unicode)
+  function base64ToUtf8(base64: string): string {
+    const bin = atob(base64);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
   }
 
   function dispose() {
