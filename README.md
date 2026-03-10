@@ -8,14 +8,22 @@ A browser-based Web SSH terminal with real-time terminal interaction, SFTP file 
 
 ## 功能特性 / Features
 
-### 多主机连接
-- 同时连接多个 SSH 主机
-- 浏览器标签页风格的多主机切换
-- 切换主机时不中断现有会话
-- 每个主机独立的终端和 SFTP 工作区
-- 从仪表板添加新连接，即时切换到工作区
+### 多主机连接 / Multi-Host Connection
+- 同时连接多个 SSH 主机 / Connect to multiple SSH hosts simultaneously
+- 浏览器标签页风格的多主机切换 / Browser tab-style host switching
+- 切换主机时不中断现有会话 / Switch hosts without interrupting existing sessions
+- 每个主机独立的终端和 SFTP 工作区 / Independent terminal and SFTP workspace per host
+- 从仪表板添加新连接，即时切换到工作区 / Add new connections from dashboard and instantly switch to workspace
 
-### SFTP 文件管理
+### 命令历史 / Command History
+- 自动保存用户执行的命令（最多 15 条）/ Automatically save executed commands (up to 15)
+- 跨会话持久化，所有连接的主机共享历史 / Persistent across sessions, shared across all connected hosts
+- 智能去重：相同命令只保留最新记录 / Smart deduplication: only keep the most recent occurrence of each command
+- 点击历史按钮快速查看和选择 / Quick view and select via history button
+- 选中命令自动填入终端，等待执行 / Selected command auto-fills terminal, ready to execute
+- 用户间完全隔离，保护隐私 / Fully isolated between users for privacy
+
+### SFTP 文件管理 / SFTP File Management
 - 远程目录浏览与导航
 - 文件上传（最大 100MB）与下载
 - 文件/目录的创建、删除、重命名
@@ -43,6 +51,12 @@ A browser-based Web SSH terminal with real-time terminal interaction, SFTP file 
 - 快捷键 / Keyboard shortcuts: `Ctrl+S` 保存/save, `Ctrl+Shift+F` 格式化/format, `Esc` 关闭/close
 - 文件大小限制 1MB，自动检测并拒绝二进制文件 / 1MB file size limit, auto-detection and rejection of binary files
 - 未保存修改提示 / Unsaved changes warning
+
+### Unicode 与 UTF-8 支持 / Unicode & UTF-8 Support
+- 完整支持中文、日文、韩文等 CJK 字符 / Full support for CJK characters (Chinese, Japanese, Korean)
+- 支持 Emoji 表情符号显示 / Emoji support
+- 支持各类特殊符号和国际化字符 / Support for special symbols and international characters
+- 基于 TextEncoder/TextDecoder 的可靠编解码 / Reliable encoding/decoding via TextEncoder/TextDecoder
 
 ### 用户认证 / User Authentication
 - 用户注册与登录 / User registration and login
@@ -87,7 +101,8 @@ webterm/
 │       │   ├── auth.controller.ts
 │       │   ├── connections.controller.ts
 │       │   ├── terminal.controller.ts
-│       │   └── sftp.controller.ts
+│       │   ├── sftp.controller.ts
+│       │   └── history.controller.ts   # 命令历史 / Command history
 │       ├── services/           # 业务逻辑层 / Business logic
 │       │   ├── auth.service.ts
 │       │   ├── crypto.service.ts    # AES-256-GCM 加密 / Encryption
@@ -111,10 +126,11 @@ webterm/
 │       │   ├── useSftp.ts           # SFTP 操作
 │       │   ├── useFileEditor.ts     # 文件编辑器逻辑
 │       │   └── useSSE.ts           # SSE 连接管理
-│       ├── api/                # API 调用层
-│       ├── stores/             # Pinia 状态管理
-│       ├── utils/              # 编辑器语言映射与主题
-│       └── router/             # 路由配置
+│       ├── api/                # API 调用层 / API client
+│       │   ├── history.api.ts        # 命令历史 API / Command history API
+│       ├── stores/             # Pinia 状态管理 / State management
+│       ├── utils/              # 工具函数 / Utilities
+│       └── router/             # 路由配置 / Routing
 ├── nginx/                      # Nginx 反向代理配置
 ├── docker-compose.yml
 └── .env.example
@@ -250,6 +266,14 @@ Express.js Backend (后端, :3000)
 | GET | `/api/sftp/sessions/:id/file/content` | 读取文件内容 / Read file content (editor) |
 | PUT | `/api/sftp/sessions/:id/file/content` | 保存文件内容 / Write file content (editor) |
 | DELETE | `/api/sftp/sessions/:id` | 关闭 SFTP 会话 / Close SFTP session |
+
+### 命令历史 / Command History
+
+| 方法 / Method | 路径 / Path | 说明 / Description |
+|------|------|------|
+| GET | `/api/history` | 获取命令历史列表 / Get command history list |
+| POST | `/api/history` | 添加命令到历史 / Add command to history |
+| DELETE | `/api/history` | 清空命令历史 / Clear command history |
 
 ### 其他 / Other
 
