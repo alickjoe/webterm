@@ -116,6 +116,11 @@ export function useSftp() {
     }
   }
 
+  async function refresh() {
+    if (!sessionId.value) return;
+    await listDir(currentPath.value);
+  }
+
   async function disconnect() {
     if (sessionId.value) {
       try {
@@ -137,6 +142,7 @@ export function useSftp() {
     listDir,
     navigateTo,
     goUp,
+    refresh,
     download,
     upload,
     remove,
