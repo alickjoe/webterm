@@ -31,6 +31,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             Up
           </button>
+          <button class="btn-secondary btn-sm" @click="sftp.refresh()" :disabled="sftp.loading.value">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh
+          </button>
           <button class="btn-primary btn-sm" @click="triggerUpload">Upload</button>
           <button class="btn-secondary btn-sm" @click="showMkdir = true">New Folder</button>
           <button class="btn-secondary btn-sm" @click="openNewFile">New File</button>
@@ -49,7 +53,14 @@
     <div v-show="activeSubTab === 'sftp'" class="panel sftp-panel">
       <div class="path-bar">
         <span class="path-label">Path:</span>
-        <span class="path-value">{{ sftp.currentPath.value }}</span>
+        <input
+          ref="pathInput"
+          v-model="editablePath"
+          type="text"
+          class="path-input"
+          @keydown.enter="handlePathEnter"
+          @blur="handlePathBlur"
+        />
       </div>
 
       <div v-if="sftp.error.value" class="sftp-error">{{ sftp.error.value }}</div>
@@ -189,6 +200,8 @@ defineExpose({
 const sftp = useSftp();
 const sftpInitialized = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const pathInput = ref<HTMLInputElement | null>(null);
+const editablePath = ref('/');
 const showMkdir = ref(false);
 const newFolderName = ref('');
 const showRename = ref(false);
@@ -216,6 +229,11 @@ watch(() => props.activeSubTab, (tab) => {
     sftp.connect(props.connectionId);
   }
 });
+
+// Sync editablePath with currentPath
+watch(() => sftp.currentPath.value, (newPath) => {
+  editablePath.value = newPath;
+}, { immediate: true });
 
 onMounted(() => {
   initTerminal();
@@ -332,6 +350,35 @@ function onEditorClose() {
 
 function onEditorSaved() {
   sftp.listDir(sftp.currentPath.value);
+}
+
+// Path input handlers
+function handlePathEnter() {
+  const trimmedPath = editablePath.value.trim();
+
+  // Normalize path
+  let normalizedPath = trimmedPath.replace(/\/+/g, '/');
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
+  }
+  if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+    normalizedPath = normalizedPath.slice(0, -1);
+  }
+
+  // If path unchanged, refresh current directory
+  if (normalizedPath === sftp.currentPath.value) {
+    sftp.refresh();
+  } else {
+    // Navigate to new path
+    sftp.listDir(normalizedPath);
+  }
+
+  pathInput.value?.blur();
+}
+
+function handlePathBlur() {
+  // Reset to current path on blur if not submitted
+  editablePath.value = sftp.currentPath.value;
 }
 </script>
 
@@ -452,6 +499,22 @@ function onEditorSaved() {
 
 .path-value {
   color: var(--accent);
+}
+
+.path-input {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+}
+
+.path-input:focus {
+  border-color: var(--accent);
 }
 
 .sftp-error {
