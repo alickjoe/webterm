@@ -7,7 +7,7 @@
             :class="['tab', { active: activeSubTab === 'terminal' }]"
             @click="$emit('subTabChange', 'terminal')"
           >
-            Terminal
+            {{ t('terminal.terminal') }}
             <span v-if="termConnected" class="tab-dot connected"></span>
             <span v-else class="tab-dot disconnected"></span>
           </button>
@@ -15,29 +15,29 @@
             :class="['tab', { active: activeSubTab === 'sftp' }]"
             @click="handleSftpTabClick"
           >
-            SFTP
+            {{ t('sftp.sftp') }}
           </button>
         </div>
       </div>
       <div class="flex items-center gap-2">
         <!-- Terminal actions -->
         <template v-if="activeSubTab === 'terminal'">
-          <button v-if="!termConnected" class="btn-primary btn-sm" @click="handleTermConnect">Reconnect</button>
-          <button v-else class="btn-danger btn-sm" @click="handleTermDisconnect">Disconnect</button>
+          <button v-if="!termConnected" class="btn-primary btn-sm" @click="handleTermConnect">{{ t('terminal.reconnect') }}</button>
+          <button v-else class="btn-danger btn-sm" @click="handleTermDisconnect">{{ t('terminal.disconnect') }}</button>
         </template>
         <!-- SFTP actions -->
         <template v-else>
           <button class="btn-secondary btn-sm" @click="sftp.goUp()" :disabled="sftp.currentPath.value === '/'">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-            Up
+            {{ t('sftp.up') }}
           </button>
           <button class="btn-secondary btn-sm" @click="sftp.refresh()" :disabled="sftp.loading.value">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Refresh
+            {{ t('sftp.refresh') }}
           </button>
-          <button class="btn-primary btn-sm" @click="triggerUpload">Upload</button>
-          <button class="btn-secondary btn-sm" @click="showMkdir = true">New Folder</button>
-          <button class="btn-secondary btn-sm" @click="openNewFile">New File</button>
+          <button class="btn-primary btn-sm" @click="triggerUpload">{{ t('sftp.upload') }}</button>
+          <button class="btn-secondary btn-sm" @click="showMkdir = true">{{ t('sftp.newFolder') }}</button>
+          <button class="btn-secondary btn-sm" @click="openNewFile">{{ t('sftp.newFile') }}</button>
           <input ref="fileInput" type="file" class="hidden" @change="handleUpload" multiple />
         </template>
       </div>
@@ -52,7 +52,7 @@
     <!-- SFTP Panel -->
     <div v-show="activeSubTab === 'sftp'" class="panel sftp-panel">
       <div class="path-bar">
-        <span class="path-label">Path:</span>
+        <span class="path-label">{{ t('sftp.path') }}</span>
         <input
           ref="pathInput"
           v-model="editablePath"
@@ -65,17 +65,17 @@
 
       <div v-if="sftp.error.value" class="sftp-error">{{ sftp.error.value }}</div>
 
-      <div v-if="sftp.loading.value && sftp.files.value.length === 0" class="loading">Loading...</div>
+      <div v-if="sftp.loading.value && sftp.files.value.length === 0" class="loading">{{ t('common.loading') }}</div>
 
       <div v-else class="file-list">
         <table>
           <thead>
             <tr>
-              <th class="col-name">Name</th>
-              <th class="col-size">Size</th>
-              <th class="col-perms">Permissions</th>
-              <th class="col-date">Modified</th>
-              <th class="col-actions">Actions</th>
+              <th class="col-name">{{ t('sftp.name') }}</th>
+              <th class="col-size">{{ t('sftp.size') }}</th>
+              <th class="col-perms">{{ t('sftp.permissions') }}</th>
+              <th class="col-date">{{ t('sftp.modified') }}</th>
+              <th class="col-actions">{{ t('sftp.actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -96,16 +96,16 @@
               <td class="col-date">{{ formatDate(file.modifiedAt) }}</td>
               <td class="col-actions">
                 <div class="flex gap-2">
-                  <button v-if="file.type === 'file'" class="btn-icon" title="Edit" @click="openEditor(file)" :disabled="file.size > MAX_EDIT_SIZE">
+                  <button v-if="file.type === 'file'" class="btn-icon" :title="t('common.edit')" @click="openEditor(file)" :disabled="file.size > MAX_EDIT_SIZE">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   </button>
-                  <button v-if="file.type === 'file'" class="btn-icon" title="Download" @click="sftp.download(file.path)">
+                  <button v-if="file.type === 'file'" class="btn-icon" :title="t('common.download')" @click="sftp.download(file.path)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   </button>
-                  <button class="btn-icon" title="Rename" @click="startRename(file)">
+                  <button class="btn-icon" :title="t('common.rename')" @click="startRename(file)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
-                  <button class="btn-icon danger" title="Delete" @click="confirmDelete(file)">
+                  <button class="btn-icon danger" :title="t('common.delete')" @click="confirmDelete(file)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 </div>
@@ -118,12 +118,12 @@
       <!-- Mkdir Dialog -->
       <div v-if="showMkdir" class="modal-overlay" @click.self="showMkdir = false">
         <div class="modal card" style="width: 360px">
-          <h3>New Folder</h3>
+          <h3>{{ t('sftp.newFolder') }}</h3>
           <form @submit.prevent="createFolder" class="form">
-            <input v-model="newFolderName" type="text" placeholder="Folder name" required autofocus />
+            <input v-model="newFolderName" type="text" :placeholder="t('sftp.folderNamePlaceholder')" required autofocus />
             <div class="flex gap-2 justify-end">
-              <button type="button" class="btn-secondary" @click="showMkdir = false">Cancel</button>
-              <button type="submit" class="btn-primary">Create</button>
+              <button type="button" class="btn-secondary" @click="showMkdir = false">{{ t('common.cancel') }}</button>
+              <button type="submit" class="btn-primary">{{ t('common.create') }}</button>
             </div>
           </form>
         </div>
@@ -132,12 +132,12 @@
       <!-- Rename Dialog -->
       <div v-if="showRename" class="modal-overlay" @click.self="showRename = false">
         <div class="modal card" style="width: 360px">
-          <h3>Rename</h3>
+          <h3>{{ t('common.rename') }}</h3>
           <form @submit.prevent="doRename" class="form">
-            <input v-model="renameNewName" type="text" placeholder="New name" required autofocus />
+            <input v-model="renameNewName" type="text" :placeholder="t('sftp.newNamePlaceholder')" required autofocus />
             <div class="flex gap-2 justify-end">
-              <button type="button" class="btn-secondary" @click="showRename = false">Cancel</button>
-              <button type="submit" class="btn-primary">Rename</button>
+              <button type="button" class="btn-secondary" @click="showRename = false">{{ t('common.cancel') }}</button>
+              <button type="submit" class="btn-primary">{{ t('common.rename') }}</button>
             </div>
           </form>
         </div>
@@ -158,6 +158,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useTerminal } from '@/composables/useTerminal';
 import { useSftp } from '@/composables/useSftp';
 import { saveCommand } from '@/api/history.api';
@@ -165,6 +166,7 @@ import { defineAsyncComponent } from 'vue';
 import type { FileEntry } from '@/types';
 import '@xterm/xterm/css/xterm.css';
 
+const { t } = useI18n();
 const FileEditorModal = defineAsyncComponent(() => import('@/views/FileEditorModal.vue'));
 
 const props = defineProps<{
@@ -297,7 +299,7 @@ async function handleUpload(e: Event) {
 }
 
 function confirmDelete(file: FileEntry) {
-  if (confirm(`Delete "${file.name}"?`)) {
+  if (confirm(t('sftp.deleteConfirm', { name: file.name }))) {
     sftp.remove(file.path);
   }
 }

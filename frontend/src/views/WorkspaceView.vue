@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <button class="btn-secondary btn-sm" @click="goToDashboard">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Dashboard
+          {{ t('workspace.dashboard') }}
         </button>
         <div class="host-tabs">
           <div
@@ -15,25 +15,25 @@
           >
             <span class="host-tab-label">{{ tab.label }}</span>
             <span class="host-tab-host">{{ tab.host }}</span>
-            <button class="host-tab-close" @click.stop="closeTab(tab.id)" title="Close">
+            <button class="host-tab-close" @click.stop="closeTab(tab.id)" :title="t('workspace.close')">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
-        <button class="btn-add-tab" @click="goToDashboard" title="Add connection">
+        <button class="btn-add-tab" @click="goToDashboard" :title="t('workspace.addConnection')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         </button>
         <div class="history-wrapper">
-          <button class="btn-add-tab" @click="toggleHistory" title="Command History">
+          <button class="btn-add-tab" @click="toggleHistory" :title="t('workspace.commandHistory')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
           <div v-if="showHistory" class="history-popup">
             <div class="history-header">
-              <span class="history-title">Command History</span>
-              <button v-if="historyCommands.length > 0" class="btn-danger btn-sm" @click="handleClearHistory">Clear</button>
+              <span class="history-title">{{ t('workspace.commandHistory') }}</span>
+              <button v-if="historyCommands.length > 0" class="btn-danger btn-sm" @click="handleClearHistory">{{ t('workspace.clear') }}</button>
             </div>
-            <div v-if="historyLoading" class="history-empty">Loading...</div>
-            <div v-else-if="historyCommands.length === 0" class="history-empty">No commands yet</div>
+            <div v-if="historyLoading" class="history-empty">{{ t('workspace.loading') }}</div>
+            <div v-else-if="historyCommands.length === 0" class="history-empty">{{ t('workspace.noCommands') }}</div>
             <div v-else class="history-list">
               <div
                 v-for="(cmd, index) in historyCommands"
@@ -47,6 +47,9 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="header-right">
+        <LanguageSwitcher />
       </div>
     </header>
 
@@ -71,10 +74,13 @@ defineOptions({ name: 'WorkspaceView' });
 
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/stores/workspace.store';
 import { getCommandHistory, clearCommandHistory } from '@/api/history.api';
 import ConnectionPanel from '@/views/ConnectionPanel.vue';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 
+const { t } = useI18n();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
 
@@ -151,11 +157,18 @@ function closeTab(tabId: string) {
 .workspace-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   min-height: 42px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .host-tabs {
