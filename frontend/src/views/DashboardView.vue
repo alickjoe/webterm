@@ -2,24 +2,25 @@
   <div class="dashboard">
     <header class="dashboard-header">
       <div class="flex items-center gap-3">
-        <h1 class="logo">WebTerm</h1>
+        <h1 class="logo">{{ t('login.title') }}</h1>
       </div>
       <div class="flex items-center gap-3">
+        <LanguageSwitcher />
         <span class="username">{{ auth.user?.username }}</span>
-        <button class="btn-secondary" @click="handleLogout">Logout</button>
+        <button class="btn-secondary" @click="handleLogout">{{ t('dashboard.logout') }}</button>
       </div>
     </header>
 
     <main class="dashboard-content">
       <div class="section-header flex items-center justify-between">
-        <h2>Connections</h2>
-        <button class="btn-primary" @click="showForm = true">+ New Connection</button>
+        <h2>{{ t('dashboard.connections') }}</h2>
+        <button class="btn-primary" @click="showForm = true">{{ t('dashboard.newConnection') }}</button>
       </div>
 
-      <div v-if="connections.loading" class="loading">Loading connections...</div>
+      <div v-if="connections.loading" class="loading">{{ t('dashboard.loadingConnections') }}</div>
 
       <div v-else-if="connections.connections.length === 0" class="empty-state card">
-        <p>No connections yet. Add your first SSH connection to get started.</p>
+        <p>{{ t('dashboard.noConnections') }}</p>
       </div>
 
       <div v-else class="connection-grid">
@@ -27,21 +28,21 @@
           <div class="conn-header">
             <h3>{{ conn.name }}</h3>
             <div class="conn-actions flex gap-2">
-              <button class="btn-icon" title="Edit" @click="editConn(conn)">
+              <button class="btn-icon" :title="t('common.edit')" @click="editConn(conn)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button class="btn-icon danger" title="Delete" @click="deleteConn(conn)">
+              <button class="btn-icon danger" :title="t('common.delete')" @click="deleteConn(conn)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>
           </div>
           <p class="conn-info">{{ conn.username }}@{{ conn.host }}:{{ conn.port }}</p>
-          <p class="conn-auth">Auth: {{ conn.authType }}</p>
+          <p class="conn-auth">{{ t('dashboard.auth') }}: {{ conn.authType }}</p>
           <div class="conn-buttons flex gap-2">
-            <button class="btn-primary" @click="openTerminal(conn.id)">Terminal</button>
-            <button class="btn-secondary" @click="openSftp(conn.id)">SFTP</button>
+            <button class="btn-primary" @click="openTerminal(conn.id)">{{ t('dashboard.terminal') }}</button>
+            <button class="btn-secondary" @click="openSftp(conn.id)">{{ t('dashboard.sftp') }}</button>
             <button class="btn-success btn-sm" @click="testConn(conn)" :disabled="testingId === conn.id">
-              {{ testingId === conn.id ? 'Testing...' : 'Test' }}
+              {{ testingId === conn.id ? t('common.testing') : t('common.test') }}
             </button>
           </div>
           <p v-if="testResults[conn.id]" :class="['test-result', testResults[conn.id].success ? 'success' : 'error']">
@@ -54,46 +55,46 @@
     <!-- Connection Form Modal -->
     <div v-if="showForm" class="modal-overlay" @click.self="closeForm">
       <div class="modal card">
-        <h2>{{ editingId ? 'Edit Connection' : 'New Connection' }}</h2>
+        <h2>{{ editingId ? t('dashboard.editConnection') : t('dashboard.newConnectionTitle') }}</h2>
         <form @submit.prevent="saveConnection" class="form">
           <div class="form-group">
-            <label>Name</label>
+            <label>{{ t('dashboard.name') }}</label>
             <input v-model="form.name" type="text" placeholder="My Server" required />
           </div>
           <div class="form-row">
             <div class="form-group" style="flex: 3">
-              <label>Host</label>
+              <label>{{ t('dashboard.host') }}</label>
               <input v-model="form.host" type="text" placeholder="192.168.1.100" required />
             </div>
             <div class="form-group" style="flex: 1">
-              <label>Port</label>
+              <label>{{ t('dashboard.port') }}</label>
               <input v-model.number="form.port" type="number" placeholder="22" required />
             </div>
           </div>
           <div class="form-group">
-            <label>Username</label>
+            <label>{{ t('dashboard.username') }}</label>
             <input v-model="form.username" type="text" placeholder="root" required />
           </div>
           <div class="form-group">
-            <label>Auth Type</label>
+            <label>{{ t('dashboard.authType') }}</label>
             <select v-model="form.authType">
-              <option value="password">Password</option>
-              <option value="privateKey">Private Key</option>
+              <option value="password">{{ t('dashboard.password') }}</option>
+              <option value="privateKey">{{ t('dashboard.privateKey') }}</option>
             </select>
           </div>
           <div v-if="form.authType === 'password'" class="form-group">
-            <label>Password</label>
-            <input v-model="form.password" type="password" :placeholder="editingId ? '(unchanged)' : 'Password'" />
+            <label>{{ t('dashboard.password') }}</label>
+            <input v-model="form.password" type="password" :placeholder="editingId ? t('login.passwordPlaceholderEdit') : t('login.passwordPlaceholder')" />
           </div>
           <div v-else class="form-group">
-            <label>Private Key</label>
-            <textarea v-model="form.privateKey" rows="4" :placeholder="editingId ? '(unchanged)' : 'Paste private key here'"></textarea>
+            <label>{{ t('dashboard.privateKey') }}</label>
+            <textarea v-model="form.privateKey" rows="4" :placeholder="editingId ? t('login.passwordPlaceholderEdit') : t('login.privateKeyPlaceholder')"></textarea>
           </div>
           <div v-if="formError" class="error-msg">{{ formError }}</div>
           <div class="flex gap-2 justify-end">
-            <button type="button" class="btn-secondary" @click="closeForm">Cancel</button>
+            <button type="button" class="btn-secondary" @click="closeForm">{{ t('common.cancel') }}</button>
             <button type="submit" class="btn-primary" :disabled="saving">
-              {{ saving ? 'Saving...' : 'Save' }}
+              {{ saving ? t('common.saving') : t('common.save') }}
             </button>
           </div>
         </form>
@@ -105,11 +106,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConnectionsStore } from '@/stores/connections.store';
 import { useWorkspaceStore } from '@/stores/workspace.store';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 import type { Connection, ConnectionInput } from '@/types';
 
+const { t } = useI18n();
 const router = useRouter();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
@@ -161,11 +165,11 @@ function editConn(conn: Connection) {
 }
 
 async function deleteConn(conn: Connection) {
-  if (!confirm(`Delete connection "${conn.name}"?`)) return;
+  if (!confirm(t('dashboard.deleteConfirm', { name: conn.name }))) return;
   try {
     await connections.removeConnection(conn.id);
   } catch (err: any) {
-    alert(err.response?.data?.error || 'Failed to delete');
+    alert(err.response?.data?.error || t('dashboard.deleteFailed'));
   }
 }
 
@@ -175,7 +179,7 @@ async function testConn(conn: Connection) {
     const result = await connections.testConn(conn.id);
     testResults.value[conn.id] = result;
   } catch (err: any) {
-    testResults.value[conn.id] = { success: false, message: err.response?.data?.error || 'Test failed' };
+    testResults.value[conn.id] = { success: false, message: err.response?.data?.error || t('dashboard.testFailed') };
   } finally {
     testingId.value = null;
   }
@@ -192,7 +196,7 @@ async function saveConnection() {
     }
     closeForm();
   } catch (err: any) {
-    formError.value = err.response?.data?.error || 'Failed to save';
+    formError.value = err.response?.data?.error || t('dashboard.saveFailed');
   } finally {
     saving.value = false;
   }

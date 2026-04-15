@@ -9,7 +9,7 @@
               ref="fileNameInput"
               v-model="editableFileName"
               class="filename-input"
-              placeholder="filename.ext"
+              :placeholder="t('editor.fileNamePlaceholder')"
               @input="onFileNameChange"
               spellcheck="false"
             />
@@ -18,7 +18,7 @@
             <span class="filename">{{ editor.fileName.value }}</span>
           </template>
           <span class="lang-badge">{{ editor.languageLabel.value }}</span>
-          <span v-if="editor.isDirty.value" class="dirty-dot" title="Unsaved changes"></span>
+          <span v-if="editor.isDirty.value" class="dirty-dot" :title="t('editor.unsaved')"></span>
         </div>
         <div class="editor-header-right">
           <span v-if="editor.error.value" class="editor-error-msg">{{ editor.error.value }}</span>
@@ -27,33 +27,33 @@
             class="btn-secondary btn-sm"
             :disabled="editor.saving.value"
             @click="handleFormat"
-            title="Format (Ctrl+Shift+F)"
+            :title="t('editor.format') + ' (Ctrl+Shift+F)'"
           >
-            Format
+            {{ t('editor.format') }}
           </button>
           <button
             class="btn-primary btn-sm"
             :disabled="editor.saving.value || editor.loading.value"
             @click="handleSave"
-            title="Save (Ctrl+S)"
+            :title="t('editor.save') + ' (Ctrl+S)'"
           >
-            {{ editor.saving.value ? 'Saving...' : 'Save' }}
+            {{ editor.saving.value ? t('editor.saving') : t('editor.save') }}
           </button>
           <button class="btn-secondary btn-sm" @click="handleClose">
-            Close
+            {{ t('editor.close') }}
           </button>
         </div>
       </div>
 
       <!-- Editor Body -->
       <div class="editor-body">
-        <div v-if="editor.loading.value" class="editor-loading">Loading file...</div>
+        <div v-if="editor.loading.value" class="editor-loading">{{ t('editor.loadingFile') }}</div>
         <div ref="editorContainer" class="cm-container"></div>
       </div>
 
       <!-- Status Bar -->
       <div class="editor-statusbar">
-        <span>Ln {{ cursorLine }}, Col {{ cursorCol }}</span>
+        <span>{{ t('editor.line') }} {{ cursorLine }}, {{ t('editor.col') }} {{ cursorCol }}</span>
         <span>UTF-8</span>
         <span>{{ editor.languageLabel.value }}</span>
       </div>
@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection, crosshairCursor, dropCursor } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -74,6 +75,8 @@ import { tokyonightTheme } from '@/utils/editor-theme';
 import { getLanguageExtension, getLintExtension } from '@/utils/editor-languages';
 import { useFileEditor } from '@/composables/useFileEditor';
 import type { FileEntry } from '@/types';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   sessionId: string;
@@ -206,7 +209,7 @@ async function handleSave() {
   if (isNewFile.value) {
     const name = editableFileName.value.trim();
     if (!name) {
-      editor.error.value = 'File name is required';
+      editor.error.value = t('editor.fileNameRequired');
       return;
     }
     editor.setFileName(name);

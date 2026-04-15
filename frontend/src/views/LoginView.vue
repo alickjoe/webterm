@@ -1,8 +1,11 @@
 <template>
   <div class="login-page">
+    <div class="lang-switch-wrapper">
+      <LanguageSwitcher />
+    </div>
     <div class="login-card card">
-      <h1 class="login-title">WebTerm</h1>
-      <p class="login-subtitle">SSH Terminal in your browser</p>
+      <h1 class="login-title">{{ t('login.title') }}</h1>
+      <p class="login-subtitle">{{ t('login.subtitle') }}</p>
 
       <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
       <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
@@ -10,42 +13,42 @@
       <!-- Login Form -->
       <form v-if="!showRegister" @submit.prevent="handleLogin" class="form">
         <div class="form-group">
-          <label>Username</label>
-          <input v-model="loginForm.username" type="text" placeholder="Username" required />
+          <label>{{ t('login.username') }}</label>
+          <input v-model="loginForm.username" type="text" :placeholder="t('login.usernamePlaceholder')" required />
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input v-model="loginForm.password" type="password" placeholder="Password" required />
+          <label>{{ t('login.password') }}</label>
+          <input v-model="loginForm.password" type="password" :placeholder="t('login.passwordPlaceholder')" required />
         </div>
         <button type="submit" class="btn-primary btn-full" :disabled="auth.loading">
-          {{ auth.loading ? 'Signing in...' : 'Sign In' }}
+          {{ auth.loading ? t('login.signingIn') : t('login.signIn') }}
         </button>
         <p class="toggle-text">
-          Don't have an account?
-          <a href="#" @click.prevent="showRegister = true">Register</a>
+          {{ t('login.noAccount') }}
+          <a href="#" @click.prevent="showRegister = true">{{ t('login.register') }}</a>
         </p>
       </form>
 
       <!-- Register Form -->
       <form v-else @submit.prevent="handleRegister" class="form">
         <div class="form-group">
-          <label>Username</label>
-          <input v-model="registerForm.username" type="text" placeholder="Username (3-32 chars)" required />
+          <label>{{ t('login.username') }}</label>
+          <input v-model="registerForm.username" type="text" :placeholder="t('login.usernamePlaceholderRegister')" required />
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input v-model="registerForm.email" type="email" placeholder="Email" required />
+          <label>{{ t('login.email') }}</label>
+          <input v-model="registerForm.email" type="email" :placeholder="t('login.emailPlaceholder')" required />
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input v-model="registerForm.password" type="password" placeholder="Password (min 6 chars)" required />
+          <label>{{ t('login.password') }}</label>
+          <input v-model="registerForm.password" type="password" :placeholder="t('login.passwordPlaceholderRegister')" required />
         </div>
         <button type="submit" class="btn-primary btn-full" :disabled="auth.loading">
-          {{ auth.loading ? 'Registering...' : 'Register' }}
+          {{ auth.loading ? t('login.registering') : t('login.register') }}
         </button>
         <p class="toggle-text">
-          Already have an account?
-          <a href="#" @click.prevent="showRegister = false">Sign In</a>
+          {{ t('login.hasAccount') }}
+          <a href="#" @click.prevent="showRegister = false">{{ t('login.signIn') }}</a>
         </p>
       </form>
     </div>
@@ -55,8 +58,11 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth.store';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 
+const { t } = useI18n();
 const router = useRouter();
 const auth = useAuthStore();
 
@@ -73,7 +79,7 @@ async function handleLogin() {
     await auth.login(loginForm.username, loginForm.password);
     router.push('/');
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.error || 'Login failed';
+    errorMsg.value = err.response?.data?.error || t('login.loginFailed');
   }
 }
 
@@ -82,10 +88,10 @@ async function handleRegister() {
   successMsg.value = '';
   try {
     await auth.register(registerForm.username, registerForm.email, registerForm.password);
-    successMsg.value = 'Registration successful! Please sign in.';
+    successMsg.value = t('login.registrationSuccess');
     showRegister.value = false;
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.error || 'Registration failed';
+    errorMsg.value = err.response?.data?.error || t('login.registrationFailed');
   }
 }
 </script>
@@ -97,6 +103,13 @@ async function handleRegister() {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #16161e 100%);
+  position: relative;
+}
+
+.lang-switch-wrapper {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .login-card {
