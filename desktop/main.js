@@ -97,6 +97,47 @@ function saveWindowState(win) {
   }
 }
 
+// ---- 右键菜单多语言 ----
+// 界面语言存在渲染进程的 localStorage（webterm-language，见 frontend/src/i18n），
+// 主进程读不到；弹出菜单前用 executeJavaScript 在页面主世界实时读取，
+// 页面内切换语言无需重载即可生效；读不到时按系统语言回退。
+const MENU_LABELS = {
+  en: {
+    reload: 'Reload',
+    forceReload: 'Force Reload (Clear Cache)',
+    copy: 'Copy',
+    cut: 'Cut',
+    paste: 'Paste',
+    selectAll: 'Select All',
+    openLink: 'Open Link in Browser',
+  },
+  zh: {
+    reload: '刷新',
+    forceReload: '强制刷新（清缓存）',
+    copy: '复制',
+    cut: '剪切',
+    paste: '粘贴',
+    selectAll: '全选',
+    openLink: '在浏览器中打开链接',
+  },
+};
+
+function detectRendererLocale(wc) {
+  return wc
+    .executeJavaScript(
+      "(function(){try{return localStorage.getItem('webterm-language')||''}catch(e){return ''}})()",
+      true
+    )
+    .then((l) => (l === 'en' || l === 'zh' ? l : null))
+    .catch(() => null);
+}
+
+function resolveMenuLocale(wc) {
+  return detectRendererLocale(wc).then(
+    (locale) => locale || (app.getLocale().startsWith('zh') ? 'zh' : 'en')
+  );
+}
+
 // ---- 主流程 ----
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -158,26 +199,29 @@ if (!gotSingleInstanceLock) {
     // 菜单级拦截会破坏终端行为，刷新/编辑操作统一走右键菜单。
     mainWindow.webContents.on('context-menu', (event, params) => {
       const wc = event.sender;
-      const items = [
-        { label: '刷新', click: () => wc.reload() },
-        { label: '强制刷新（清缓存）', click: () => wc.reloadIgnoringCache() },
-        { type: 'separator' },
-        {
-          label: '复制',
-          role: 'copy',
-          enabled: params.editFlags.canCopy && params.selectionText.trim() !== '',
-        },
-        { label: '剪切', role: 'cut', enabled: params.editFlags.canCut },
-        { label: '粘贴', role: 'paste', enabled: params.editFlags.canPaste },
-        { label: '全选', role: 'selectAll' },
-      ];
-      if (params.linkURL) {
-        items.push(
+      resolveMenuLocale(wc).then((lang) => {
+        const t = MENU_LABELS[lang];
+        const items = [
+          { label: t.reload, click: () => wc.reload() },
+          { label: t.forceReload, click: () => wc.reloadIgnoringCache() },
           { type: 'separator' },
-          { label: '在浏览器中打开链接', click: () => shell.openExternal(params.linkURL) }
-        );
-      }
-      Menu.buildFromTemplate(items).popup({ window: mainWindow });
+          {
+            label: t.copy,
+            role: 'copy',
+            enabled: params.editFlags.canCopy && params.selectionText.trim() !== '',
+          },
+          { label: t.cut, role: 'cut', enabled: params.editFlags.canCut },
+          { label: t.paste, role: 'paste', enabled: params.editFlags.canPaste },
+          { label: t.selectAll, role: 'selectAll' },
+        ];
+        if (params.linkURL) {
+          items.push(
+            { type: 'separator' },
+            { label: t.openLink, click: () => shell.openExternal(params.linkURL) }
+          );
+        }
+        Menu.buildFromTemplate(items).popup({ window: mainWindow });
+      });
     });
 
     // 页面内的跨源导航 → 系统浏览器；同源导航放行
