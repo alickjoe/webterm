@@ -1,6 +1,6 @@
 {
   "name": "@alickjoe/webterm",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "webterm 桌面客户端：用 Electron 应用窗口包装 webterm 网页（不打包 exe）",
   "bin": {
     "webterm": "cli.js"
