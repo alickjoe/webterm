@@ -25,8 +25,22 @@ if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND
   fail('未检测到图形会话（DISPLAY/WAYLAND_DISPLAY 均为空），无法打开应用窗口。');
 }
 
-// require('electron') 在普通 Node 进程中返回 electron 可执行文件路径（字符串）
-const electronPath = require('electron');
+// require('electron') 在普通 Node 进程中返回 electron 可执行文件路径（字符串）；
+// 二进制缺失时会触发懒下载（走公司网/TLS 网关可能失败）
+let electronPath;
+try {
+  electronPath = require('electron');
+} catch (err) {
+  fail(
+    'Electron 运行时缺失或下载失败（常见于公司网络）。\n' +
+    '修复方法（PowerShell）：\n' +
+    '  1. 公司 TLS 解密网关会重签证书，需让 Node 信任公司根 CA：\n' +
+    '     导出根 CA 为 PEM 后：$env:NODE_EXTRA_CA_CERTS="<根CA.pem路径>"\n' +
+    '  2. 或改用镜像下载：$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"\n' +
+    '     然后重新运行 webterm（会自动重试下载）。\n' +
+    '详细说明见 README「Windows 企业网络」一节。'
+  );
+}
 if (typeof electronPath !== 'string') {
   fail('electron 依赖未正确安装，请尝试在包目录重新运行 `npm install`。');
 }

@@ -18,8 +18,33 @@ npm install -g @alickjoe/webterm
 ### Windows（主要目标平台）
 
 - 无需任何系统依赖，Electron 自包含。
-- 公司 TLS 解密网关（MITM）重签的证书：Windows 上 Electron 使用 **Windows 系统证书库**，与 Chrome/Edge 同源——公司 CA 由组策略下发后自动受信，**无需额外配置**。判据：浏览器能正常打开 webterm，本客户端就能。
+- **页面 TLS**：Chromium 读 **Windows 系统证书库**，与 Chrome/Edge 同源——公司 TLS 解密网关重签的证书由组策略下发的公司 CA 自动受信，**无需额外配置**。判据：浏览器能正常打开 webterm，本客户端就能。
 - 例外：非公司管控的个人电脑若无公司根 CA，会显示重试页，可临时用 `WEBTERM_INSECURE_TLS=1`。
+
+#### Windows 企业网络：Electron 二进制下载失败（fetch failed）
+
+Electron 二进制在**首次运行 `webterm` 时下载**（GitHub 或镜像），走的是 Node 内置 fetch（undici）——它**不读 Windows 系统证书库**，遇到公司网关重签的证书会报 `TypeError: fetch failed`（重跑 `webterm` 会自动重试）。
+
+修复（PowerShell）：
+
+```powershell
+# ① 导出公司根 CA 并转为 PEM（Windows 内置工具；多条结果时改用 foreach 逐条导出）
+Get-ChildItem Cert:\LocalMachine\Root |
+  Where-Object { $_.Subject -match "公司" } |
+  Export-Certificate -FilePath "$env:USERPROFILE\corp-root.cer"
+certutil -encode "$env:USERPROFILE\corp-root.cer" "$env:USERPROFILE\corp-root.pem"
+
+# ② 让 Node 信任公司根 CA + 走镜像，重新运行 webterm
+$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\corp-root.pem"
+$env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+webterm
+```
+
+验证通过后建议持久化（`setx` 对新开终端生效）：
+
+```powershell
+setx NODE_EXTRA_CA_CERTS "%USERPROFILE%\corp-root.pem"
+```
 
 ### Linux
 
