@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>webterm - 无法连接</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    .box { max-width: 560px; padding: 32px; text-align: center; }
+    h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+    .desc { color: #9ca3af; font-size: 13px; margin: 0 0 20px; word-break: break-all; }
+    .target { font-size: 13px; color: #6b7280; margin: 0 0 24px; word-break: break-all; }
+    #retry {
+      display: inline-block;
+      padding: 8px 28px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    #retry:hover { background: #1d4ed8; }
+    .hint { margin-top: 20px; font-size: 12px; color: #6b7280; line-height: 1.7; }
+    code { background: #2d2d2d; padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>无法连接到 webterm</h1>
+    <p class="desc" id="desc"></p>
+    <p class="target">目标地址：<span id="target"></span></p>
+    <a id="retry" href="#">重试</a>
+    <p class="hint">
+      请检查网络与 VPN 连接。<br />
+      更换地址：修改 <code>~/.webterm/config.json</code>，或用环境变量
+      <code>WEBTERM_URL</code>，或执行 <code>webterm &lt;url&gt;</code>。
+    </p>
+  </div>
+  <script>
+    var p = new URLSearchParams(location.search);
+    document.getElementById('target').textContent = p.get('url') || '';
+    document.getElementById('desc').textContent = p.get('desc') ? '错误：' + p.get('code') + ' ' + p.get('desc') : '';
+    document.getElementById('retry').href = p.get('url') || 'https://webterm.example.com/';
+  </script>
+</body>
+</html>
