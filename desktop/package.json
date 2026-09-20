@@ -1,0 +1,34 @@
+{
+  "name": "@alickjoe/webterm",
+  "version": "0.1.0",
+  "description": "webterm 桌面客户端：用 Electron 应用窗口包装 webterm 网页（不打包 exe）",
+  "bin": {
+    "webterm": "./cli.js"
+  },
+  "main": "main.js",
+  "files": [
+    "cli.js",
+    "main.js",
+    "retry.html",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "electron ."
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "webterm",
+    "ssh",
+    "terminal",
+    "sftp",
+    "electron",
+    "desktop"
+  ],
+  "dependencies": {
+    "electron": "^44.4.3"
+  },
+  "license": "MIT",
+  "private": false
+}
