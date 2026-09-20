@@ -10,8 +10,9 @@ webterm 桌面客户端：用 Electron 把 webterm 网页包装成独立应用�
 npm install -g @alickjoe/webterm
 ```
 
-> 注意：首次安装会下载 Electron 运行时（约 100MB），请耐心等待。
 > 发布 scoped 包需要 `npm publish --access public`。
+
+**Electron 运行时下载说明**：electron@44 官方包不再带 postinstall 自动下载，默认是首次运行 `webterm` 时才下载。本包已通过自带 postinstall 把下载**合并进 npm install 阶段**（失败不阻断安装，首次运行时会自动重试）。同版本二进制有用户级缓存（Windows `%LOCALAPPDATA%\electron\Cache`），升级重装只解压不重新联网下载。企业网络下载失败的修复见「Windows 企业网络」一节。
 
 ## 平台说明
 
