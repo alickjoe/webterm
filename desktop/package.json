@@ -33,5 +33,10 @@
     "electron": "^44.4.3"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alickjoe/webterm.git",
+    "directory": "desktop"
+  },
   "private": false
 }
