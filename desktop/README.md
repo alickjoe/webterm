@@ -29,8 +29,11 @@ npm install -g @alickjoe/webterm
 sudo apt-get install -y libgtk-3-0 libnss3 libasound2 libgl1 \
   libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 libcups2 libgbm1 \
   libpango-1.0-0 libcairo2 libxcomposite1 libxdamage1 libxfixes3 \
-  libxkbcommon0 libxrandr2
+  libxkbcommon0 libxrandr2 \
+  fonts-noto-cjk fonts-noto-color-emoji fonts-noto-core
 ```
+
+> 字体三件套提供中文（CJK）、emoji 图标（SFTP 界面的 📁/📄 等）和符号字符；缺失会显示方块。安装后需重启客户端。
 
 - 公司 TLS 解密网关证书（如 公司 ssldecryptca）：Chromium 在 Linux 上读 NSS 数据库而非系统 CA bundle，需手动导入根 CA（已在系统信任库的前提下）：
 
