@@ -28,6 +28,14 @@ if (process.env.WEBTERM_INSECURE_TLS === '1') {
   app.commandLine.appendSwitch('ignore-certificate-errors');
 }
 
+// ---- 调试：CDP 远程调试端口（WEBTERM_REMOTE_DEBUGGING=9222）----
+if (process.env.WEBTERM_REMOTE_DEBUGGING) {
+  app.commandLine.appendSwitch(
+    'remote-debugging-port',
+    process.env.WEBTERM_REMOTE_DEBUGGING
+  );
+}
+
 // ---- 配置加载 ----
 function loadConfig() {
   // 优先级：env > 配置文件 > 内置默认

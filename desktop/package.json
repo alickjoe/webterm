@@ -10,7 +10,8 @@
     "cli.js",
     "main.js",
     "retry.html",
-    "README.md"
+    "README.md",
+    "tools"
   ],
   "scripts": {
     "start": "electron ."
