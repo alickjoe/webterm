@@ -83,7 +83,9 @@ const appDir = __dirname;
 
 const child = spawn(electronPath, [appDir], {
   stdio: 'inherit',
-  windowsHide: true,
+  // 注意：Windows 上不要设 windowsHide:true —— CREATE_NO_WINDOW 会导致
+  // Electron 窗口永不显示（进程正常、日志正常但无窗口）。
+  // electron.exe 是 GUI 子系统程序，不需要隐藏控制台。
 });
 
 child.on('error', (err) => {
