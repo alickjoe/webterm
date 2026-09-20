@@ -17,7 +17,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DEFAULT_URL = 'https://webterm.example.com/';
+// 默认地址以 Base64 模糊存储：避免公开 npm 包内明文出现内部域名
+// （仅为防直接检索的混淆手段，非加密；可用 config.json / WEBTERM_URL 覆盖）
+const DEFAULT_URL = Buffer.from('aHR0cHM6Ly93ZWJ0ZXJtLmFsaWNremhvdS5jb20v', 'base64').toString('utf8');
 const DATA_DIR = path.join(os.homedir(), '.webterm');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const WINDOW_STATE_FILE = path.join(DATA_DIR, 'window.json');

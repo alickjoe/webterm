@@ -47,9 +47,15 @@
   </div>
   <script>
     var p = new URLSearchParams(location.search);
-    document.getElementById('target').textContent = p.get('url') || '';
+    var url = p.get('url') || '';
     document.getElementById('desc').textContent = p.get('desc') ? '错误：' + p.get('code') + ' ' + p.get('desc') : '';
-    document.getElementById('retry').href = p.get('url') || 'https://webterm.example.com/';
+    if (url) {
+      document.getElementById('target').textContent = url;
+      document.getElementById('retry').href = url;
+    } else {
+      document.getElementById('retry').style.display = 'none';
+      document.getElementById('target').textContent = '未配置目标地址（WEBTERM_URL 环境变量或 ~/.webterm/config.json）';
+    }
   </script>
 </body>
 </html>

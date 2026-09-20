@@ -10,33 +10,67 @@ webterm 桌面客户端：用 Electron 把 webterm 网页包装成独立应用�
 npm install -g @alickjoe/webterm
 ```
 
-> 发布 scoped 包需要 `npm publish --access public`。
-
 **Electron 运行时下载说明**：electron@44 官方包不再带 postinstall 自动下载，默认是首次运行 `webterm` 时才下载。本包已通过自带 postinstall 把下载**合并进 npm install 阶段**（失败不阻断安装，首次运行时会自动重试）。同版本二进制有用户级缓存（Windows `%LOCALAPPDATA%\electron\Cache`），升级重装只解压不重新联网下载。企业网络下载失败的修复见「Windows 企业网络」一节。
+
+## 使用
+
+```bash
+# 默认加载内置的线上地址（部署者通过 config.json / 构建参数设定）
+webterm
+
+# 临时指向其它地址（优先级最高）
+webterm http://127.0.0.1:3300/
+```
+
+## 配置
+
+目标地址优先级：**命令行参数 > 环境变量 `WEBTERM_URL` > `~/.webterm/config.json` > 内置默认值**。
+
+修改默认地址，创建 `~/.webterm/config.json`：
+
+```json
+{ "url": "https://<your-webterm-host>/" }
+```
+
+其它环境变量：
+
+| 变量 | 说明 |
+|---|---|
+| `WEBTERM_URL` | 覆盖目标地址 |
+| `WEBTERM_INSECURE_TLS=1` | 跳过 TLS 证书校验（仅公司自签证书链特殊时使用，有安全风险） |
+| `WEBTERM_REMOTE_DEBUGGING=9222` | 开启 CDP 远程调试端口（仅调试用，勿在不可信环境开启） |
+
+窗口尺寸/位置自动记忆到 `~/.webterm/window.json`。
 
 ## 平台说明
 
 ### Windows（主要目标平台）
 
 - 无需任何系统依赖，Electron 自包含。
-- **页面 TLS**：Chromium 读 **Windows 系统证书库**，与 Chrome/Edge 同源——公司 TLS 解密网关重签的证书由组策略下发的公司 CA 自动受信，**无需额外配置**。判据：浏览器能正常打开 webterm，本客户端就能。
+- **页面 TLS**：Chromium 读 **Windows 系统证书库**，与 Chrome/Edge 同源——企业 TLS 解密网关重签的证书由组策略下发的公司 CA 自动受信，**无需额外配置**。判据：浏览器能正常打开 webterm，本客户端就能。
 - 例外：非公司管控的个人电脑若无公司根 CA，会显示重试页，可临时用 `WEBTERM_INSECURE_TLS=1`。
 
 #### Windows 企业网络：Electron 二进制下载失败（fetch failed）
 
-Electron 二进制在**首次运行 `webterm` 时下载**（GitHub 或镜像），走的是 Node 内置 fetch（undici）——它**不读 Windows 系统证书库**，遇到公司网关重签的证书会报 `TypeError: fetch failed`（重跑 `webterm` 会自动重试）。
+Electron 二进制下载走的是 Node 内置 fetch（undici）——它**不读 Windows 系统证书库**，遇到企业网关重签的证书会报 `TypeError: fetch failed`（重跑 `webterm` 会自动重试）。
 
 修复（PowerShell）：
 
 ```powershell
 # ① 导出公司根 CA 并转为 PEM（Windows 内置工具；多条结果时改用 foreach 逐条导出）
-Get-ChildItem Cert:\LocalMachine\Root |
-  Where-Object { $_.Subject -match "公司" } |
-  Export-Certificate -FilePath "$env:USERPROFILE\corp-root.cer"
-certutil -encode "$env:USERPROFILE\corp-root.cer" "$env:USERPROFILE\corp-root.pem"
+#    将 <公司CA关键字> 替换为公司根 CA 证书 Subject 里的可匹配关键字
+$out = "$env:USERPROFILE\corp-root-ca.pem"
+Remove-Item $out -ErrorAction SilentlyContinue
+foreach ($c in (@(Get-ChildItem Cert:\LocalMachine\Root) +
+                @(Get-ChildItem Cert:\LocalMachine\CA) |
+                Where-Object { $_.Subject -match "<公司CA关键字>" })) {
+  "-----BEGIN CERTIFICATE-----" | Add-Content $out
+  [Convert]::ToBase64String($c.RawData, 'InsertLineBreaks') | Add-Content $out
+  "-----END CERTIFICATE-----" | Add-Content $out
+}
 
 # ② 让 Node 信任公司根 CA + 走镜像，重新运行 webterm
-$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\corp-root.pem"
+$env:NODE_EXTRA_CA_CERTS = "$out"
 $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 webterm
 ```
@@ -44,7 +78,7 @@ webterm
 验证通过后建议持久化（`setx` 对新开终端生效）：
 
 ```powershell
-setx NODE_EXTRA_CA_CERTS "%USERPROFILE%\corp-root.pem"
+setx NODE_EXTRA_CA_CERTS "%USERPROFILE%\corp-root-ca.pem"
 ```
 
 ### Linux
@@ -61,14 +95,14 @@ sudo apt-get install -y libgtk-3-0 libnss3 libasound2 libgl1 \
 
 > 字体三件套提供中文（CJK）、emoji 图标（SFTP 界面的 📁/📄 等）和符号字符；缺失会显示方块。安装后需重启客户端。
 
-- 公司 TLS 解密网关证书（如 公司 ssldecryptca）：Chromium 在 Linux 上读 NSS 数据库而非系统 CA bundle，需手动导入根 CA（已在系统信任库的前提下）：
+- 企业 TLS 解密网关证书：Chromium 在 Linux 上读 NSS 数据库而非系统 CA bundle，需手动导入公司根 CA（前提：根 CA 已导入系统信任库）：
 
 ```bash
 sudo apt-get install -y libnss3-tools
 mkdir -p ~/.pki/nssdb
 certutil -d sql:$HOME/.pki/nssdb -N --empty-password
 certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n corp-root-ca \
-  -i /usr/local/share/ca-certificates/corp-root-ca.crt
+  -i /path/to/corp-root-ca.crt
 ```
 
   （根 CA 文件路径以实际环境为准；导入后无需 `WEBTERM_INSECURE_TLS`。）
@@ -78,36 +112,6 @@ Fedora/RHEL 系统库：
 ```bash
 sudo dnf install gtk3 nss libnss3-tools alsa-lib libglvnd atk at-spi2-atk cups-libs mesa-libgbm pango libXcomposite libXdamage libXfixes libxkbcommon libXrandr
 ```
-
-## 使用
-
-```bash
-# 默认加载 https://webterm.example.com/
-webterm
-
-# 临时指向其它地址（优先级最高）
-webterm http://127.0.0.1:3300/
-```
-
-## 配置
-
-目标地址优先级：**命令行参数 > 环境变量 `WEBTERM_URL` > `~/.webterm/config.json` > 内置默认值**。
-
-修改默认地址，创建 `~/.webterm/config.json`：
-
-```json
-{ "url": "https://webterm.example.com/" }
-```
-
-其它环境变量：
-
-| 变量 | 说明 |
-|---|---|
-| `WEBTERM_URL` | 覆盖目标地址 |
-| `WEBTERM_INSECURE_TLS=1` | 跳过 TLS 证书校验（仅公司自签证书链特殊时使用，有安全风险） |
-| `WEBTERM_REMOTE_DEBUGGING=9222` | 开启 CDP 远程调试端口（仅调试用，勿在不可信环境开启） |
-
-窗口尺寸/位置自动记忆到 `~/.webterm/window.json`。
 
 ### Linux 字体排障
 
@@ -139,9 +143,16 @@ npm install
 npm start            # electron .
 ```
 
-发布到 npm：
+## 发布（GitHub Actions CI）
 
-```bash
-npm pack --dry-run   # 检查包内容
-npm publish --access public
-```
+发布由 tag 触发的 CI 自动完成（`.github/workflows/publish.yml`）：
+
+1. **一次性配置**：npmjs.com → Access Tokens → Generate New Token（选择 **Granular Access Token**，权限 Publish、包范围限定 `@alickjoe/webterm`、设置过期时间）→ GitHub 仓库 **Settings → Secrets and variables → Actions** 添加 secret `NPM_TOKEN`。
+2. **日常发布**：更新 `desktop/package.json` 的 `version` → 提交 → 打 tag 并推送：
+   ```bash
+   git tag v0.1.4 && git push origin v0.1.4
+   ```
+   CI 校验 tag 与 package.json 版本一致后自动 `npm publish --access public --provenance`。
+3. **手动兜底**（本地）：`cd desktop && npm publish --access public`（浏览器 OTP 授权）。
+
+> bin 路径写法注意：npm 11 的 `npm pkg fix` 会把 bin 值的 `./` 前缀剥掉，且发布时 `./xxx` 形式会被 auto-correct 移除——保持不带 `./` 的文件名形式。

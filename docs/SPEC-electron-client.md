@@ -63,4 +63,4 @@ Electron 内核即 Chromium：页面加载、Cookie、SSE、xterm 渲染与浏�
 ## 7. 已确认参数
 
 - npm 包名：`@alickjoe/webterm`
-- 默认线上地址：`https://webterm.example.com/`
+- 默认线上地址：已内置（在公开包/仓库文档中以模糊形式存储，不落明文）
