@@ -46,7 +46,7 @@ if (process.platform === 'linux') {
         fail(
           `Electron 缺少系统依赖库：\n  ${missing.join('\n  ')}\n` +
           'Debian/Ubuntu 可执行：\n' +
-          '  sudo apt-get install -y libgtk-3-0 libnss3 libasound2 \\\n' +
+          '  sudo apt-get install -y libgtk-3-0 libnss3 libasound2 libgl1 \\\n' +
           '    libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 libcups2 libgbm1 \\\n' +
           '    libpango-1.0-0 libcairo2 libxcomposite1 libxdamage1 libxfixes3 \\\n' +
           '    libxkbcommon0 libxrandr2\n' +

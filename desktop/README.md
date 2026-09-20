@@ -13,21 +13,41 @@ npm install -g @alickjoe/webterm
 > 注意：首次安装会下载 Electron 运行时（约 100MB），请耐心等待。
 > 发布 scoped 包需要 `npm publish --access public`。
 
-### Linux 系统依赖
+## 平台说明
 
-Electron 需要 GTK/NSS 等系统库（缺失时 `webterm` 启动会自动检测并提示）。Debian/Ubuntu 手动安装：
+### Windows（主要目标平台）
+
+- 无需任何系统依赖，Electron 自包含。
+- 公司 TLS 解密网关（MITM）重签的证书：Windows 上 Electron 使用 **Windows 系统证书库**，与 Chrome/Edge 同源——公司 CA 由组策略下发后自动受信，**无需额外配置**。判据：浏览器能正常打开 webterm，本客户端就能。
+- 例外：非公司管控的个人电脑若无公司根 CA，会显示重试页，可临时用 `WEBTERM_INSECURE_TLS=1`。
+
+### Linux
+
+- 需要安装 GTK/NSS 等系统运行库（缺失时 `webterm` 启动会自动检测并提示）。Debian/Ubuntu：
 
 ```bash
-sudo apt-get install -y libgtk-3-0 libnss3 libasound2 \
+sudo apt-get install -y libgtk-3-0 libnss3 libasound2 libgl1 \
   libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 libcups2 libgbm1 \
   libpango-1.0-0 libcairo2 libxcomposite1 libxdamage1 libxfixes3 \
   libxkbcommon0 libxrandr2
 ```
 
-Fedora/RHEL：
+- 公司 TLS 解密网关证书（如 公司 ssldecryptca）：Chromium 在 Linux 上读 NSS 数据库而非系统 CA bundle，需手动导入根 CA（已在系统信任库的前提下）：
 
 ```bash
-sudo dnf install gtk3 nss alsa-lib atk at-spi2-atk cups-libs mesa-libgbm pango libXcomposite libXdamage libXfixes libxkbcommon libXrandr
+sudo apt-get install -y libnss3-tools
+mkdir -p ~/.pki/nssdb
+certutil -d sql:$HOME/.pki/nssdb -N --empty-password
+certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n corp-root-ca \
+  -i /usr/local/share/ca-certificates/corp-root-ca.crt
+```
+
+  （根 CA 文件路径以实际环境为准；导入后无需 `WEBTERM_INSECURE_TLS`。）
+
+Fedora/RHEL 系统库：
+
+```bash
+sudo dnf install gtk3 nss libnss3-tools alsa-lib libglvnd atk at-spi2-atk cups-libs mesa-libgbm pango libXcomposite libXdamage libXfixes libxkbcommon libXrandr
 ```
 
 ## 使用

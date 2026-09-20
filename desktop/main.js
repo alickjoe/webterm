@@ -131,11 +131,16 @@ if (!gotSingleInstanceLock) {
     mainWindow.webContents.on('did-fail-load', (event, code, desc, url, isMainFrame) => {
       if (!isMainFrame) return;
       if (code === -3) return; // ERR_ABORTED：通常由重定向/手动取消引起，忽略
+      console.error(`[webterm] 页面加载失败：${code} ${desc || ''}`);
       mainWindow
         .loadFile(path.join(__dirname, 'retry.html'), {
           query: { url: target.url, code: String(code), desc: desc || '' },
         })
         .catch(() => {});
+    });
+
+    mainWindow.webContents.on('did-finish-load', () => {
+      console.log('[webterm] 页面加载完成');
     });
 
     // 页面内的跨源导航 → 系统浏览器；同源导航放行
