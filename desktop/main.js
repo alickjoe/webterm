@@ -153,6 +153,33 @@ if (!gotSingleInstanceLock) {
       console.log('[webterm] 页面加载完成');
     });
 
+    // 右键菜单：刷新 / 编辑基本操作（按状态启用）/ 链接走系统浏览器
+    // 刻意不做全局快捷键：Ctrl+R（历史搜索）、Ctrl+C（SIGINT）在 SSH 终端里有语义，
+    // 菜单级拦截会破坏终端行为，刷新/编辑操作统一走右键菜单。
+    mainWindow.webContents.on('context-menu', (event, params) => {
+      const wc = event.sender;
+      const items = [
+        { label: '刷新', click: () => wc.reload() },
+        { label: '强制刷新（清缓存）', click: () => wc.reloadIgnoringCache() },
+        { type: 'separator' },
+        {
+          label: '复制',
+          role: 'copy',
+          enabled: params.editFlags.canCopy && params.selectionText.trim() !== '',
+        },
+        { label: '剪切', role: 'cut', enabled: params.editFlags.canCut },
+        { label: '粘贴', role: 'paste', enabled: params.editFlags.canPaste },
+        { label: '全选', role: 'selectAll' },
+      ];
+      if (params.linkURL) {
+        items.push(
+          { type: 'separator' },
+          { label: '在浏览器中打开链接', click: () => shell.openExternal(params.linkURL) }
+        );
+      }
+      Menu.buildFromTemplate(items).popup({ window: mainWindow });
+    });
+
     // 页面内的跨源导航 → 系统浏览器；同源导航放行
     const appOrigin = safeOrigin(target.url);
     mainWindow.webContents.on('will-navigate', (event, url) => {
