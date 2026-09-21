@@ -198,30 +198,37 @@ if (!gotSingleInstanceLock) {
     // 刻意不做全局快捷键：Ctrl+R（历史搜索）、Ctrl+C（SIGINT）在 SSH 终端里有语义，
     // 菜单级拦截会破坏终端行为，刷新/编辑操作统一走右键菜单。
     mainWindow.webContents.on('context-menu', (event, params) => {
-      const wc = event.sender;
-      resolveMenuLocale(wc).then((lang) => {
-        const t = MENU_LABELS[lang];
-        const items = [
-          { label: t.reload, click: () => wc.reload() },
-          { label: t.forceReload, click: () => wc.reloadIgnoringCache() },
-          { type: 'separator' },
-          {
-            label: t.copy,
-            role: 'copy',
-            enabled: params.editFlags.canCopy && params.selectionText.trim() !== '',
-          },
-          { label: t.cut, role: 'cut', enabled: params.editFlags.canCut },
-          { label: t.paste, role: 'paste', enabled: params.editFlags.canPaste },
-          { label: t.selectAll, role: 'selectAll' },
-        ];
-        if (params.linkURL) {
-          items.push(
+      // Electron 某些触发路径下 event.sender 可能为 undefined（0.1.7 崩溃根因），
+      // 本壳是单窗口，统一用本窗口的 webContents，并兜住整条异步链避免主进程崩溃
+      const wc = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+      if (!wc) return;
+      resolveMenuLocale(wc)
+        .then((lang) => {
+          const t = MENU_LABELS[lang] || MENU_LABELS.en;
+          const items = [
+            { label: t.reload, click: () => wc.reload() },
+            { label: t.forceReload, click: () => wc.reloadIgnoringCache() },
             { type: 'separator' },
-            { label: t.openLink, click: () => shell.openExternal(params.linkURL) }
-          );
-        }
-        Menu.buildFromTemplate(items).popup({ window: mainWindow });
-      });
+            {
+              label: t.copy,
+              role: 'copy',
+              enabled: params.editFlags.canCopy && params.selectionText.trim() !== '',
+            },
+            { label: t.cut, role: 'cut', enabled: params.editFlags.canCut },
+            { label: t.paste, role: 'paste', enabled: params.editFlags.canPaste },
+            { label: t.selectAll, role: 'selectAll' },
+          ];
+          if (params.linkURL) {
+            items.push(
+              { type: 'separator' },
+              { label: t.openLink, click: () => shell.openExternal(params.linkURL) }
+            );
+          }
+          Menu.buildFromTemplate(items).popup({ window: mainWindow });
+        })
+        .catch((err) => {
+          console.error(`[webterm] 右键菜单失败：${err && err.message}`);
+        });
     });
 
     // 页面内的跨源导航 → 系统浏览器；同源导航放行
